@@ -1,0 +1,28 @@
+import { NextResponse } from 'next/server'
+
+import { getJobById, resetJobForRetry } from '@/lib/server/jobs'
+import { ensureWorkerStarted } from '@/lib/server/worker'
+
+export const runtime = 'nodejs'
+
+export async function POST(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params
+  const job = getJobById(id)
+  if (!job) {
+    return NextResponse.json({ error: 'Job not found.' }, { status: 404 })
+  }
+
+  try {
+    const reset = resetJobForRetry(id)
+    ensureWorkerStarted()
+    return NextResponse.json({ job: reset })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Retry failed.' },
+      { status: 409 },
+    )
+  }
+}
