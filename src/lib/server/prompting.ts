@@ -106,8 +106,9 @@ export function buildGoalAnchorPrompts(input: {
     'You are extracting a stable goal anchor for Prompt Optimizer Studio.',
     'Do not rewrite the task into a safer but more generic goal.',
     'Your job is to preserve the original task.',
-    'Return JSON only with fields: goal, deliverable, driftGuard.',
+    'Return JSON only with fields: goal, deliverable, driftGuard, sourceSummary, rationale.',
     'driftGuard must be an array of 2-4 concise strings that define what counts as drift.',
+    'rationale must be an array of 2-4 concise strings explaining why this goal anchor matches the original task.',
     'Do not remove the core objective, do not remove the key deliverable, and do not replace the task with generic safety advice.',
   ].join('\n\n')
 

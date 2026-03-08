@@ -65,6 +65,10 @@ interface JobDetailPayload {
       deliverable: string
       driftGuard: string[]
     }
+    goalAnchorExplanation: {
+      sourceSummary: string
+      rationale: string[]
+    }
     status: JobStatus
     runMode: JobRunMode
     currentRound: number
@@ -569,6 +573,16 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
                     {savingGoalAnchor ? '保存中...' : '保存核心目标锚点'}
                   </button>
                 ) : null}
+              </div>
+              <div className="fold-card explanation-card">
+                <strong>提炼解释</strong>
+                <p className="small"><strong>原始任务摘要：</strong>{detail.job.goalAnchorExplanation.sourceSummary}</p>
+                <strong>系统为什么这样提炼</strong>
+                <ul className="list compact-list">
+                  {detail.job.goalAnchorExplanation.rationale.map((item, index) => (
+                    <li key={`goal-rationale-${index}`}>{item}</li>
+                  ))}
+                </ul>
               </div>
             </section>
 

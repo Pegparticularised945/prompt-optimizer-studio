@@ -44,6 +44,8 @@ test('job controls support cancel, next-round model updates, and legacy error ma
               goal: '保持任务原始目标',
               deliverable: '输出原始任务要求的最终结果',
               driftGuard: ['不要把任务改成别的事情'],
+              sourceSummary: '系统识别到原始任务要求保留核心目标。',
+              rationale: ['原始 prompt 很短，但明确给出了任务目标。'],
             }),
           },
         },
@@ -57,6 +59,7 @@ test('job controls support cancel, next-round model updates, and legacy error ma
 
     assert.equal(pendingJob.goalAnchor.goal, '保持任务原始目标')
     assert.equal(runningJob.goalAnchor.deliverable, '输出原始任务要求的最终结果')
+    assert.equal(pendingJob.goalAnchorExplanation.sourceSummary, '系统识别到原始任务要求保留核心目标。')
 
     const updatedPending = updateJobModels(pendingJob.id, {
       optimizerModel: 'gpt-5.4',
@@ -174,6 +177,8 @@ test('job controls support paused state, resume modes, and max round overrides',
     assert.equal(job.nextRoundInstruction, null)
     assert.ok(job.goalAnchor.goal.length > 0)
     assert.match(job.goalAnchor.goal, /Improve this prompt/)
+    assert.ok(job.goalAnchorExplanation.sourceSummary.length > 0)
+    assert.equal(job.goalAnchorExplanation.rationale.length >= 1, true)
 
     const steered = updateJobNextRoundInstruction(job.id, 'Keep the output warmer and more direct.')
     assert.equal(steered.nextRoundInstruction, 'Keep the output warmer and more direct.')

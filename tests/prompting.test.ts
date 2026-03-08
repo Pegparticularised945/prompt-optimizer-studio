@@ -82,6 +82,6 @@ test('goal anchor generation prompt preserves the task and forbids generic safet
   })
 
   assert.match(prompts.system, /do not rewrite the task into a safer but more generic goal/i)
-  assert.match(prompts.system, /goal, deliverable, driftGuard/i)
+  assert.match(prompts.system, /goal, deliverable, driftGuard, sourceSummary, rationale/i)
   assert.match(prompts.user, /医疗分诊提示词/)
 })

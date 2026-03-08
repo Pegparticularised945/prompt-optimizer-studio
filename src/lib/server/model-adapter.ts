@@ -1,6 +1,7 @@
 import type { ModelAdapter, OptimizationResult, RoundJudgment } from '@/lib/engine/optimization-cycle'
 import { normalizeGoalAnchor } from '@/lib/server/goal-anchor'
-import type { GoalAnchor, PromptPackVersion, AppSettings } from '@/lib/server/types'
+import { normalizeGoalAnchorExplanation } from '@/lib/server/goal-anchor-explanation'
+import type { GoalAnchor, GoalAnchorExplanation, PromptPackVersion, AppSettings } from '@/lib/server/types'
 import { extractJsonObject } from '@/lib/server/json'
 import { buildGoalAnchorPrompts, buildJudgePrompts, buildOptimizerPrompts } from '@/lib/server/prompting'
 
@@ -86,7 +87,10 @@ export async function generateGoalAnchorWithModel(
 ) {
   const { system, user } = buildGoalAnchorPrompts({ rawPrompt })
   const payload = await requestJsonFromCpamc(settings, model, system, user, 12_000, 1)
-  return normalizeGoalAnchor(payload as Partial<GoalAnchor>)
+  return {
+    goalAnchor: normalizeGoalAnchor(payload as Partial<GoalAnchor>),
+    explanation: normalizeGoalAnchorExplanation(payload as Partial<GoalAnchorExplanation>),
+  }
 }
 
 async function requestJsonFromCpamc(

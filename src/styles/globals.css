@@ -468,3 +468,12 @@ main {
   margin: 0;
   line-height: 1.55;
 }
+
+.explanation-card {
+  display: grid;
+  gap: 8px;
+}
+
+.explanation-card p {
+  margin: 0;
+}

@@ -4,6 +4,11 @@ import { assignConversationGroup } from '@/lib/engine/conversation-policy'
 import { getJobDisplayError } from '@/lib/presentation'
 import { getDb } from '@/lib/server/db'
 import { deriveGoalAnchor, parseGoalAnchor, serializeGoalAnchor } from '@/lib/server/goal-anchor'
+import {
+  deriveGoalAnchorExplanation,
+  parseGoalAnchorExplanation,
+  serializeGoalAnchorExplanation,
+} from '@/lib/server/goal-anchor-explanation'
 import { generateGoalAnchorWithModel } from '@/lib/server/model-adapter'
 import { ensurePromptPackVersion } from '@/lib/server/prompt-pack'
 import { compactFeedback } from '@/lib/server/prompting'
@@ -11,6 +16,7 @@ import { getSettings, validateCpamcConnection, validateTaskDefaults } from '@/li
 import type {
   CandidateRecord,
   GoalAnchor,
+  GoalAnchorExplanation,
   JobDetail,
   JobInput,
   JobRunMode,
@@ -65,6 +71,7 @@ export async function createJobs(inputs: JobInput[]) {
         current_round,
         best_average_score,
         goal_anchor_json,
+        goal_anchor_explanation_json,
         max_rounds_override,
         next_round_instruction,
         next_round_instruction_updated_at,
@@ -79,7 +86,7 @@ export async function createJobs(inputs: JobInput[]) {
         error_message,
         created_at,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, NULL, NULL, 'pending', 'auto', ?, 0, 0, ?, NULL, NULL, NULL, 0, 0, '[]', NULL, ?, ?, NULL, NULL, NULL, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, NULL, NULL, 'pending', 'auto', ?, 0, 0, ?, ?, NULL, NULL, NULL, 0, 0, '[]', NULL, ?, ?, NULL, NULL, NULL, ?, ?)
     `).run(
       id,
       normalizeTitle(input.title, normalizedPrompt),
@@ -87,7 +94,8 @@ export async function createJobs(inputs: JobInput[]) {
       models.optimizerModel,
       models.judgeModel,
       pack.id,
-      serializeGoalAnchor(goalAnchor),
+      serializeGoalAnchor(goalAnchor.goalAnchor),
+      serializeGoalAnchorExplanation(goalAnchor.explanation),
       settings.conversationPolicy,
       assignment.group?.id ?? null,
       now,
@@ -118,6 +126,7 @@ export function listJobs() {
       jobs.best_average_score,
       COALESCE(latest_candidate.optimized_prompt, jobs.raw_prompt) AS latest_prompt,
       jobs.goal_anchor_json,
+      jobs.goal_anchor_explanation_json,
       jobs.max_rounds_override,
       jobs.next_round_instruction,
       jobs.next_round_instruction_updated_at,
@@ -165,6 +174,7 @@ export function getJobById(id: string) {
       jobs.best_average_score,
       COALESCE(latest_candidate.optimized_prompt, jobs.raw_prompt) AS latest_prompt,
       jobs.goal_anchor_json,
+      jobs.goal_anchor_explanation_json,
       jobs.max_rounds_override,
       jobs.next_round_instruction,
       jobs.next_round_instruction_updated_at,
@@ -773,7 +783,11 @@ async function resolveInitialGoalAnchor(
   try {
     return await generateGoalAnchorWithModel(settings, optimizerModel, rawPrompt)
   } catch {
-    return deriveGoalAnchor(rawPrompt)
+    const goalAnchor = deriveGoalAnchor(rawPrompt)
+    return {
+      goalAnchor,
+      explanation: deriveGoalAnchorExplanation(rawPrompt, goalAnchor),
+    }
   }
 }
 
@@ -883,6 +897,7 @@ function mapJobRow(row: Record<string, unknown>): JobRecord {
     bestAverageScore: Number(row.best_average_score),
     latestPrompt: String(row.latest_prompt ?? row.raw_prompt ?? ''),
     goalAnchor: parseGoalAnchor(row.goal_anchor_json),
+    goalAnchorExplanation: parseGoalAnchorExplanation(row.goal_anchor_explanation_json),
     maxRoundsOverride: row.max_rounds_override === null || row.max_rounds_override === undefined
       ? null
       : Number(row.max_rounds_override),

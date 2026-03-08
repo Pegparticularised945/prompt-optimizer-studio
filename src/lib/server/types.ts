@@ -10,6 +10,11 @@ export interface GoalAnchor {
   driftGuard: string[]
 }
 
+export interface GoalAnchorExplanation {
+  sourceSummary: string
+  rationale: string[]
+}
+
 export interface AppSettings {
   cpamcBaseUrl: string
   cpamcApiKey: string
@@ -48,6 +53,7 @@ export interface JobRecord {
   bestAverageScore: number
   latestPrompt: string
   goalAnchor: GoalAnchor
+  goalAnchorExplanation: GoalAnchorExplanation
   maxRoundsOverride: number | null
   nextRoundInstruction: string | null
   passStreak: number
