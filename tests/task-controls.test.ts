@@ -7,6 +7,7 @@ import test from 'node:test'
 test('job controls support cancel, next-round model updates, and legacy error mapping', async () => {
   const originalCwd = process.cwd()
   const originalDbPath = process.env.PROMPT_OPTIMIZER_DB_PATH
+  const originalFetch = global.fetch
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'po-controls-'))
   process.env.PROMPT_OPTIMIZER_DB_PATH = path.join(tempDir, 'test.db')
   process.chdir(tempDir)
@@ -35,16 +36,33 @@ test('job controls support cancel, next-round model updates, and legacy error ma
       defaultJudgeModel: 'gpt-5.2',
     })
 
-    const [pendingJob, runningJob] = createJobs([
+    global.fetch = (async () => new Response(JSON.stringify({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              goal: '保持任务原始目标',
+              deliverable: '输出原始任务要求的最终结果',
+              driftGuard: ['不要把任务改成别的事情'],
+            }),
+          },
+        },
+      ],
+    }), { status: 200 })) as typeof fetch
+
+    const [pendingJob, runningJob] = await createJobs([
       { title: 'Pending job', rawPrompt: 'A', optimizerModel: 'gpt-5.2', judgeModel: 'gpt-5.2' },
       { title: 'Running job', rawPrompt: 'B', optimizerModel: 'gpt-5.2', judgeModel: 'gpt-5.2' },
     ])
+
+    assert.equal(pendingJob.goalAnchor.goal, '保持任务原始目标')
+    assert.equal(runningJob.goalAnchor.deliverable, '输出原始任务要求的最终结果')
 
     const updatedPending = updateJobModels(pendingJob.id, {
       optimizerModel: 'gpt-5.4',
       judgeModel: 'gemini-3.1-pro',
     })
-    assert.match(updatedPending.goalAnchor.goal, /A/)
+    assert.equal(updatedPending.goalAnchor.goal, '保持任务原始目标')
     assert.equal(updatedPending.optimizerModel, 'gpt-5.4')
     assert.equal(updatedPending.judgeModel, 'gemini-3.1-pro')
 
@@ -96,6 +114,7 @@ test('job controls support cancel, next-round model updates, and legacy error ma
     assert.equal(listedPending?.latestPrompt, 'A')
   } finally {
     process.chdir(originalCwd)
+    global.fetch = originalFetch
     if (originalDbPath === undefined) {
       delete process.env.PROMPT_OPTIMIZER_DB_PATH
     } else {
@@ -107,6 +126,7 @@ test('job controls support cancel, next-round model updates, and legacy error ma
 test('job controls support paused state, resume modes, and max round overrides', async () => {
   const originalCwd = process.cwd()
   const originalDbPath = process.env.PROMPT_OPTIMIZER_DB_PATH
+  const originalFetch = global.fetch
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'po-controls-paused-'))
   process.env.PROMPT_OPTIMIZER_DB_PATH = path.join(tempDir, 'test.db')
   process.chdir(tempDir)
@@ -139,7 +159,11 @@ test('job controls support paused state, resume modes, and max round overrides',
       maxRounds: 8,
     })
 
-    const [job] = createJobs([
+    global.fetch = (async () => {
+      throw new Error('simulated goal anchor generation failure')
+    }) as typeof fetch
+
+    const [job] = await createJobs([
       { title: 'Step job', rawPrompt: 'Improve this prompt', optimizerModel: 'gpt-5.2', judgeModel: 'gpt-5.2' },
     ])
 
@@ -149,6 +173,7 @@ test('job controls support paused state, resume modes, and max round overrides',
     assert.equal(job.pauseRequestedAt, null)
     assert.equal(job.nextRoundInstruction, null)
     assert.ok(job.goalAnchor.goal.length > 0)
+    assert.match(job.goalAnchor.goal, /Improve this prompt/)
 
     const steered = updateJobNextRoundInstruction(job.id, 'Keep the output warmer and more direct.')
     assert.equal(steered.nextRoundInstruction, 'Keep the output warmer and more direct.')
@@ -252,6 +277,7 @@ test('job controls support paused state, resume modes, and max round overrides',
     assert.equal(listed?.latestPrompt, 'LATEST PROMPT FROM CANDIDATE')
   } finally {
     process.chdir(originalCwd)
+    global.fetch = originalFetch
     if (originalDbPath === undefined) {
       delete process.env.PROMPT_OPTIMIZER_DB_PATH
     } else {

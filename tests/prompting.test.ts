@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { buildJudgePrompts, buildOptimizerPrompts, compactFeedback } from '../src/lib/server/prompting'
+import { buildGoalAnchorPrompts, buildJudgePrompts, buildOptimizerPrompts, compactFeedback } from '../src/lib/server/prompting'
 
 test('compactFeedback keeps only unique high-signal items', () => {
   const result = compactFeedback([
@@ -74,4 +74,14 @@ test('judge prompt remains isolated from next-round steering', () => {
   assert.match(prompts.user, /Return a structured triage decision\./)
   assert.doesNotMatch(prompts.system, /next round steering/i)
   assert.doesNotMatch(prompts.user, /Keep the wording warmer/)
+})
+
+test('goal anchor generation prompt preserves the task and forbids generic safety drift', () => {
+  const prompts = buildGoalAnchorPrompts({
+    rawPrompt: '请优化一个医疗分诊提示词，要求输出结构化分诊结论与风险等级。',
+  })
+
+  assert.match(prompts.system, /do not rewrite the task into a safer but more generic goal/i)
+  assert.match(prompts.system, /goal, deliverable, driftGuard/i)
+  assert.match(prompts.user, /医疗分诊提示词/)
 })

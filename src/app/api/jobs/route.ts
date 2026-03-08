@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '至少提交一个任务。' }, { status: 400 })
     }
 
-    const created = createJobs(jobs)
+    const created = await createJobs(jobs)
     ensureWorkerStarted()
     return NextResponse.json({ jobs: created }, { status: 201 })
   } catch (error) {

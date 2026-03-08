@@ -98,3 +98,24 @@ export function buildJudgePrompts(input: {
 
   return { system, user }
 }
+
+export function buildGoalAnchorPrompts(input: {
+  rawPrompt: string
+}) {
+  const system = [
+    'You are extracting a stable goal anchor for Prompt Optimizer Studio.',
+    'Do not rewrite the task into a safer but more generic goal.',
+    'Your job is to preserve the original task.',
+    'Return JSON only with fields: goal, deliverable, driftGuard.',
+    'driftGuard must be an array of 2-4 concise strings that define what counts as drift.',
+    'Do not remove the core objective, do not remove the key deliverable, and do not replace the task with generic safety advice.',
+  ].join('\n\n')
+
+  const user = [
+    'Original task prompt:',
+    input.rawPrompt,
+    'Extract the stable goal anchor. Return only JSON.',
+  ].join('\n\n')
+
+  return { system, user }
+}

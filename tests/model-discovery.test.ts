@@ -25,6 +25,7 @@ test('normalizes OpenAI-style model payloads into alias-only ids', () => {
 test('createJobs snapshots explicit and default task models', async () => {
   const originalCwd = process.cwd()
   const originalDbPath = process.env.PROMPT_OPTIMIZER_DB_PATH
+  const originalFetch = global.fetch
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'po-models-'))
   process.env.PROMPT_OPTIMIZER_DB_PATH = path.join(tempDir, 'test.db')
   process.chdir(tempDir)
@@ -42,7 +43,11 @@ test('createJobs snapshots explicit and default task models', async () => {
       defaultJudgeModel: 'gemini-3.1-pro',
     })
 
-    const [explicitJob, defaultJob] = createJobs([
+    global.fetch = (async () => {
+      throw new Error('skip remote goal anchor generation in test')
+    }) as typeof fetch
+
+    const [explicitJob, defaultJob] = await createJobs([
       {
         title: 'Explicit models',
         rawPrompt: 'prompt A',
@@ -61,6 +66,7 @@ test('createJobs snapshots explicit and default task models', async () => {
     assert.equal(defaultJob.judgeModel, 'gemini-3.1-pro')
   } finally {
     process.chdir(originalCwd)
+    global.fetch = originalFetch
     if (originalDbPath === undefined) {
       delete process.env.PROMPT_OPTIMIZER_DB_PATH
     } else {

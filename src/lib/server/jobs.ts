@@ -4,6 +4,7 @@ import { assignConversationGroup } from '@/lib/engine/conversation-policy'
 import { getJobDisplayError } from '@/lib/presentation'
 import { getDb } from '@/lib/server/db'
 import { deriveGoalAnchor, parseGoalAnchor, serializeGoalAnchor } from '@/lib/server/goal-anchor'
+import { generateGoalAnchorWithModel } from '@/lib/server/model-adapter'
 import { ensurePromptPackVersion } from '@/lib/server/prompt-pack'
 import { compactFeedback } from '@/lib/server/prompting'
 import { getSettings, validateCpamcConnection, validateTaskDefaults } from '@/lib/server/settings'
@@ -19,7 +20,7 @@ import type {
 
 export { getJobDisplayError }
 
-export function createJobs(inputs: JobInput[]) {
+export async function createJobs(inputs: JobInput[]) {
   const settings = getSettings()
   validateCpamcConnection(settings)
 
@@ -48,6 +49,7 @@ export function createJobs(inputs: JobInput[]) {
     }
 
     const id = crypto.randomUUID()
+    const goalAnchor = await resolveInitialGoalAnchor(settings, models.optimizerModel, normalizedPrompt)
     db.prepare(`
       INSERT INTO jobs (
         id,
@@ -85,7 +87,7 @@ export function createJobs(inputs: JobInput[]) {
       models.optimizerModel,
       models.judgeModel,
       pack.id,
-      serializeGoalAnchor(deriveGoalAnchor(normalizedPrompt)),
+      serializeGoalAnchor(goalAnchor),
       settings.conversationPolicy,
       assignment.group?.id ?? null,
       now,
@@ -760,6 +762,18 @@ function resolveJobModels(input: JobInput, settings: ReturnType<typeof getSettin
   return {
     optimizerModel: optimizerModel || settings.defaultOptimizerModel.trim(),
     judgeModel: judgeModel || settings.defaultJudgeModel.trim(),
+  }
+}
+
+async function resolveInitialGoalAnchor(
+  settings: Pick<ReturnType<typeof getSettings>, 'cpamcBaseUrl' | 'cpamcApiKey'>,
+  optimizerModel: string,
+  rawPrompt: string,
+) {
+  try {
+    return await generateGoalAnchorWithModel(settings, optimizerModel, rawPrompt)
+  } catch {
+    return deriveGoalAnchor(rawPrompt)
   }
 }
 
