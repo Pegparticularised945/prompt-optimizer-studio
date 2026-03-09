@@ -5,8 +5,24 @@ A local-first control room for iterative prompt refinement that keeps the latest
 一个本地优先的提示词优化控制室：把最新、可直接复制的完整提示词始终放在最前面，同时保留暂停、人工引导、继续一轮与恢复自动运行这些关键控制能力。
 
 <p align="center">
+  <a href="https://img.shields.io/badge/edition-self--hosted-2d6a4f?style=flat-square"><img alt="Self-hosted" src="https://img.shields.io/badge/edition-self--hosted-2d6a4f?style=flat-square" /></a>
+  <a href="https://img.shields.io/badge/storage-local%20SQLite-52796f?style=flat-square"><img alt="Local SQLite" src="https://img.shields.io/badge/storage-local%20SQLite-52796f?style=flat-square" /></a>
+  <a href="https://img.shields.io/badge/providers-OpenAI%20compatible%20%7C%20Anthropic%20%7C%20Gemini-f4a261?style=flat-square"><img alt="Provider support" src="https://img.shields.io/badge/providers-OpenAI%20compatible%20%7C%20Anthropic%20%7C%20Gemini-f4a261?style=flat-square" /></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-1d3557?style=flat-square" /></a>
+</p>
+
+<p align="center">
+  Final-prompt-first · Human steering between rounds · Base URL / API Key / model alias UX · Docker-friendly self-hosting
+  <br />
+  完整提示词优先 · 支持中途人工纠偏 · 统一 Base URL / API Key / 模型别名输入 · 适合 Docker 自托管
+</p>
+
+<p align="center">
   <a href="#english">English</a> ·
-  <a href="#中文">中文</a>
+  <a href="#中文">中文</a> ·
+  <a href="#screenshots">Screenshots</a> ·
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="docs/deployment/docker-self-hosted.md">Docker Guide</a>
 </p>
 
 <p align="center">
@@ -14,6 +30,8 @@ A local-first control room for iterative prompt refinement that keeps the latest
 </p>
 
 ## Screenshots
+
+Current UI captured from local demo data generated with `npm run demo:seed`.
 
 | Control Room | Result Desk |
 | --- | --- |

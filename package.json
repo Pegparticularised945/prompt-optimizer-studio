@@ -11,7 +11,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/**/*.test.ts",
-    "check": "npm run typecheck && npm run test && npm run build"
+    "check": "npm run typecheck && npm run test && npm run build",
+    "demo:seed": "node --import tsx scripts/seed-demo-data.ts"
   },
   "dependencies": {
     "framer-motion": "^12.35.1",
