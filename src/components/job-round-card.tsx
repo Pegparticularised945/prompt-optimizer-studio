@@ -4,6 +4,8 @@ interface JudgeRun {
   score: number
   hasMaterialIssues: boolean
   summary: string
+  driftLabels: string[]
+  driftExplanation: string
   findings: string[]
   suggestedChanges: string[]
 }
@@ -89,6 +91,17 @@ export function JobRoundCard({
                 <strong>复核结果</strong>
                 <span className={`status ${review.hasMaterialIssues ? 'manual_review' : 'completed'}`}>{review.score}</span>
               </div>
+              {review.driftLabels.length > 0 ? (
+                <>
+                  <strong>偏题标签</strong>
+                  <div className="inline-actions">
+                    {review.driftLabels.map((item, index) => (
+                      <span className="pill manual_review" key={`${review.id}-drift-${index}`}>{item}</span>
+                    ))}
+                  </div>
+                  {review.driftExplanation ? <p className="small">{review.driftExplanation}</p> : null}
+                </>
+              ) : null}
               <strong>发现的问题</strong>
               <ul className="list compact-list">
                 {review.findings.map((item, index) => <li key={`${review.id}-finding-${index}`}>{item}</li>)}

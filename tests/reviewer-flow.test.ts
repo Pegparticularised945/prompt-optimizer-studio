@@ -8,11 +8,20 @@ import {
   type RoundJudgment,
 } from '../src/lib/engine/optimization-cycle'
 
-function makeJudgment(score: number, hasMaterialIssues = false, findings: string[] = [], suggestedChanges: string[] = []): RoundJudgment {
+function makeJudgment(
+  score: number,
+  hasMaterialIssues = false,
+  findings: string[] = [],
+  suggestedChanges: string[] = [],
+  driftLabels: string[] = [],
+  driftExplanation = '',
+): RoundJudgment {
   return {
     score,
     hasMaterialIssues,
     summary: 'review',
+    driftLabels,
+    driftExplanation,
     findings,
     suggestedChanges,
   }
@@ -32,6 +41,13 @@ test('pass streak increments only when current review fully passes', () => {
   assert.equal(nextPassStreak(0, makeJudgment(95, false)), 1)
   assert.equal(nextPassStreak(1, makeJudgment(96, false)), 2)
   assert.equal(nextPassStreak(2, makeJudgment(94, true, ['issue'])), 0)
+})
+
+test('drift labels can be attached without changing pass logic when review passes cleanly', () => {
+  const review = makeJudgment(95, false, [], [], [], '')
+  assert.deepEqual(review.driftLabels, [])
+  assert.equal(review.driftExplanation, '')
+  assert.equal(nextPassStreak(0, review), 1)
 })
 
 test('job finalizes only after three consecutive passing reviews', () => {

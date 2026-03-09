@@ -21,6 +21,8 @@ interface JudgeRun {
   score: number
   hasMaterialIssues: boolean
   summary: string
+  driftLabels: string[]
+  driftExplanation: string
   findings: string[]
   suggestedChanges: string[]
 }

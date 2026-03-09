@@ -70,6 +70,8 @@ export class CpamcModelAdapter implements ModelAdapter {
       score: Number(payload.score ?? 0),
       hasMaterialIssues: Boolean(payload.hasMaterialIssues),
       summary: String(payload.summary ?? ''),
+      driftLabels: normalizeTextArray(payload.driftLabels),
+      driftExplanation: normalizeTextValue(payload.driftExplanation, ''),
       findings: normalizeTextArray(payload.findings),
       suggestedChanges: normalizeTextArray(payload.suggestedChanges),
     }

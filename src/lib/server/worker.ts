@@ -158,6 +158,8 @@ async function runJob(jobId: string) {
           score: review.score,
           hasMaterialIssues: review.hasMaterialIssues,
           summary: review.summary,
+          driftLabels: review.driftLabels,
+          driftExplanation: review.driftExplanation,
           findings: review.findings,
           suggestedChanges: review.suggestedChanges,
           createdAt: new Date().toISOString(),

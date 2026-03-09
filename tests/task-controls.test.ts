@@ -248,6 +248,7 @@ test('job controls support paused state, resume modes, and max round overrides',
     assert.equal(getJobById(job.id)?.status, 'pending')
 
     const { getDb } = await import('../src/lib/server/db')
+    const candidateId = crypto.randomUUID()
     getDb().prepare(`
       INSERT INTO candidates (
         id,
@@ -264,7 +265,7 @@ test('job controls support paused state, resume modes, and max round overrides',
         created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      crypto.randomUUID(),
+      candidateId,
       job.id,
       1,
       'LATEST PROMPT FROM CANDIDATE',
@@ -278,8 +279,42 @@ test('job controls support paused state, resume modes, and max round overrides',
       new Date().toISOString(),
     )
 
+    getDb().prepare(`
+      INSERT INTO judge_runs (
+        id,
+        job_id,
+        candidate_id,
+        judge_index,
+        score,
+        has_material_issues,
+        summary,
+        drift_labels_json,
+        drift_explanation,
+        findings_json,
+        suggested_changes_json,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      crypto.randomUUID(),
+      job.id,
+      candidateId,
+      0,
+      88,
+      1,
+      '偏离目标',
+      JSON.stringify(['over_safety_generalization']),
+      '为了规避风险，输出已经退化成泛化安全建议。',
+      JSON.stringify(['目标不再聚焦原任务']),
+      JSON.stringify(['恢复原始交付物']),
+      new Date().toISOString(),
+    )
+
     const listed = listJobs().find((item) => item.id === job.id)
     assert.equal(listed?.latestPrompt, 'LATEST PROMPT FROM CANDIDATE')
+
+    const detail = (await import('../src/lib/server/jobs')).getJobDetail(job.id)
+    assert.deepEqual(detail?.candidates[0]?.judges[0]?.driftLabels, ['over_safety_generalization'])
+    assert.equal(detail?.candidates[0]?.judges[0]?.driftExplanation, '为了规避风险，输出已经退化成泛化安全建议。')
   } finally {
     process.chdir(originalCwd)
     global.fetch = originalFetch

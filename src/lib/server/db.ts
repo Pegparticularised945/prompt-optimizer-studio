@@ -107,6 +107,8 @@ export function getDb() {
       score REAL NOT NULL,
       has_material_issues INTEGER NOT NULL,
       summary TEXT NOT NULL,
+      drift_labels_json TEXT NOT NULL DEFAULT '[]',
+      drift_explanation TEXT NOT NULL DEFAULT '',
       findings_json TEXT NOT NULL,
       suggested_changes_json TEXT NOT NULL,
       created_at TEXT NOT NULL,
@@ -136,6 +138,8 @@ export function getDb() {
   ensureColumn(db, 'jobs', 'pass_streak', 'INTEGER NOT NULL DEFAULT 0')
   ensureColumn(db, 'jobs', 'last_review_score', 'REAL NOT NULL DEFAULT 0')
   ensureColumn(db, 'jobs', 'last_review_patch_json', "TEXT NOT NULL DEFAULT '[]'")
+  ensureColumn(db, 'judge_runs', 'drift_labels_json', "TEXT NOT NULL DEFAULT '[]'")
+  ensureColumn(db, 'judge_runs', 'drift_explanation', "TEXT NOT NULL DEFAULT ''")
 
   const existingSettings = db.prepare('SELECT id FROM settings WHERE id = 1').get() as { id?: number } | undefined
   if (!existingSettings) {

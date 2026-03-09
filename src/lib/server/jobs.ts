@@ -239,6 +239,8 @@ export function getJobDetail(id: string): JobDetail | null {
       score,
       has_material_issues,
       summary,
+      drift_labels_json,
+      drift_explanation,
       findings_json,
       suggested_changes_json,
       created_at
@@ -651,10 +653,12 @@ export function createCandidateWithJudges(jobId: string, input: {
         score,
         has_material_issues,
         summary,
+        drift_labels_json,
+        drift_explanation,
         findings_json,
         suggested_changes_json,
         created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       judgment.id,
       jobId,
@@ -663,6 +667,8 @@ export function createCandidateWithJudges(jobId: string, input: {
       judgment.score,
       judgment.hasMaterialIssues ? 1 : 0,
       judgment.summary,
+      JSON.stringify(compactFeedback(judgment.driftLabels, { maxItems: 3, maxItemLength: 60 })),
+      judgment.driftExplanation,
       JSON.stringify(compactFeedback(judgment.findings, { maxItems: 6, maxItemLength: 180 })),
       JSON.stringify(compactFeedback(judgment.suggestedChanges, { maxItems: 6, maxItemLength: 180 })),
       judgment.createdAt,
@@ -945,6 +951,8 @@ function mapJudgeRow(row: Record<string, unknown>): JudgeRunRecord {
     score: Number(row.score),
     hasMaterialIssues: Boolean(row.has_material_issues),
     summary: String(row.summary),
+    driftLabels: parseJsonArray(row.drift_labels_json),
+    driftExplanation: row.drift_explanation ? String(row.drift_explanation) : '',
     findings: parseJsonArray(row.findings_json),
     suggestedChanges: parseJsonArray(row.suggested_changes_json),
     createdAt: String(row.created_at),

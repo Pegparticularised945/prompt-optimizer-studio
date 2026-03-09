@@ -71,6 +71,9 @@ test('judge prompt remains isolated from next-round steering', () => {
   })
 
   assert.match(prompts.system, /Goal fidelity is a hard gate/i)
+  assert.match(prompts.system, /goal_changed/i)
+  assert.match(prompts.system, /deliverable_missing/i)
+  assert.match(prompts.system, /over_safety_generalization/i)
   assert.match(prompts.user, /Return a structured triage decision\./)
   assert.doesNotMatch(prompts.system, /next round steering/i)
   assert.doesNotMatch(prompts.user, /Keep the wording warmer/)

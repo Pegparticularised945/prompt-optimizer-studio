@@ -41,6 +41,8 @@ test('returns a single review result for the current candidate', async () => {
     score: 97,
     hasMaterialIssues: false,
     summary: 'strong',
+    driftLabels: [],
+    driftExplanation: '',
     findings: [],
     suggestedChanges: [],
   })
@@ -68,6 +70,8 @@ test('keeps only the current review patch, without historical review context', a
     score: 94,
     hasMaterialIssues: true,
     summary: 'still weak',
+    driftLabels: ['focus_shift'],
+    driftExplanation: 'The prompt drifted away from the original task center.',
     findings: ['missing boundary test'],
     suggestedChanges: ['add edge case'],
   })

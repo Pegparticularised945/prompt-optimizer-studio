@@ -24,6 +24,8 @@ const candidate: RoundCandidateView = {
       score: 96,
       hasMaterialIssues: false,
       summary: '结构已经稳定，只剩轻微语气优化空间。',
+      driftLabels: [],
+      driftExplanation: '',
       findings: ['Tone is slightly formal.'],
       suggestedChanges: ['Warm up the tone.'],
     },
