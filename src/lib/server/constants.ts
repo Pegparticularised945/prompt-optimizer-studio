@@ -1,11 +1,10 @@
-import path from 'node:path'
-
 import type { ConversationPolicy } from '@/lib/engine/conversation-policy'
+import { resolveRuntimeEnv } from '@/lib/server/runtime-env'
 
 export const PROMPT_SKILL_DIR = '/Users/road/.codex/skills/prompt-optimizer'
 
 export function resolveDatabasePath() {
-  return process.env.PROMPT_OPTIMIZER_DB_PATH ?? path.join(process.cwd(), 'data', 'prompt-optimizer.db')
+  return resolveRuntimeEnv().databasePath
 }
 
 export const DEFAULT_SETTINGS = {
