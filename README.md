@@ -248,6 +248,11 @@ At the task level, the app supports:
 
 Active development.
 
+### Contributing And Security
+
+- Contribution guide: [`/CONTRIBUTING.md`](CONTRIBUTING.md)
+- Security policy: [`/SECURITY.md`](SECURITY.md)
+
 ### License
 
 This project is released under the `MIT` License. See `/LICENSE`.
@@ -476,6 +481,11 @@ Docker Compose 默认会把数据库放在：
 ### 项目状态
 
 持续开发中。
+
+### 参与贡献与安全
+
+- 贡献说明：[`/CONTRIBUTING.md`](CONTRIBUTING.md)
+- 安全策略：[`/SECURITY.md`](SECURITY.md)
 
 ### 许可证
 
