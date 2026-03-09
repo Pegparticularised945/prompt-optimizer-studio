@@ -1,6 +1,4 @@
-import type { NextConfig } from 'next'
-
-const nextConfig: NextConfig = {
+const nextConfig = {
   typedRoutes: true,
   turbopack: {
     root: process.cwd(),
