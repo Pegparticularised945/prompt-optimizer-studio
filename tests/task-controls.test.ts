@@ -139,8 +139,10 @@ test('job controls support paused state, resume modes, and max round overrides',
     resetDbForTests()
     const { saveSettings } = await import('../src/lib/server/settings')
     const {
+      addPendingSteeringItem,
       claimNextRunnableJob,
-      clearConsumedNextRoundInstruction,
+      clearPendingSteeringItems,
+      consumePendingSteeringItems,
       createJobs,
       getJobById,
       getOptimizerSeed,
@@ -149,7 +151,6 @@ test('job controls support paused state, resume modes, and max round overrides',
       resumeJobAuto,
       resumeJobStep,
       updateJobGoalAnchor,
-      updateJobNextRoundInstruction,
       updateJobMaxRoundsOverride,
       updateJobProgress,
     } = await import('../src/lib/server/jobs')
@@ -174,14 +175,14 @@ test('job controls support paused state, resume modes, and max round overrides',
     assert.equal(job.runMode, 'auto')
     assert.equal(job.maxRoundsOverride, null)
     assert.equal(job.pauseRequestedAt, null)
-    assert.equal(job.nextRoundInstruction, null)
+    assert.deepEqual(job.pendingSteeringItems, [])
     assert.ok(job.goalAnchor.goal.length > 0)
     assert.match(job.goalAnchor.goal, /Improve this prompt/)
     assert.ok(job.goalAnchorExplanation.sourceSummary.length > 0)
     assert.equal(job.goalAnchorExplanation.rationale.length >= 1, true)
 
-    const steered = updateJobNextRoundInstruction(job.id, 'Keep the output warmer and more direct.')
-    assert.equal(steered.nextRoundInstruction, 'Keep the output warmer and more direct.')
+    const steered = addPendingSteeringItem(job.id, 'Keep the output warmer and more direct.')
+    assert.deepEqual(steered.pendingSteeringItems.map((item) => item.text), ['Keep the output warmer and more direct.'])
 
     const anchored = updateJobGoalAnchor(job.id, {
       goal: '保持分诊目标',
@@ -191,21 +192,20 @@ test('job controls support paused state, resume modes, and max round overrides',
     assert.equal(anchored.goalAnchor.deliverable, '输出结构化分诊结果')
 
     const firstSeed = getOptimizerSeed(job.id)
-    assert.equal(firstSeed.nextRoundInstruction, 'Keep the output warmer and more direct.')
-    assert.ok(firstSeed.nextRoundInstructionUpdatedAt)
+    assert.deepEqual(firstSeed.pendingSteeringItems.map((item) => item.text), ['Keep the output warmer and more direct.'])
     assert.equal(firstSeed.goalAnchor.goal, '保持分诊目标')
 
-    const consumed = clearConsumedNextRoundInstruction(job.id, firstSeed.nextRoundInstructionUpdatedAt)
-    assert.equal(consumed.nextRoundInstruction, null)
+    const consumed = consumePendingSteeringItems(job.id, firstSeed.pendingSteeringItems.map((item) => item.id))
+    assert.deepEqual(consumed.pendingSteeringItems, [])
 
-    updateJobNextRoundInstruction(job.id, 'First steering note.')
+    addPendingSteeringItem(job.id, 'First steering note.')
     const staleSeed = getOptimizerSeed(job.id)
-    updateJobNextRoundInstruction(job.id, 'Newer steering note.')
-    const preserved = clearConsumedNextRoundInstruction(job.id, staleSeed.nextRoundInstructionUpdatedAt)
-    assert.equal(preserved.nextRoundInstruction, 'Newer steering note.')
+    addPendingSteeringItem(job.id, 'Newer steering note.')
+    const preserved = consumePendingSteeringItems(job.id, staleSeed.pendingSteeringItems.map((item) => item.id))
+    assert.deepEqual(preserved.pendingSteeringItems.map((item) => item.text), ['Newer steering note.'])
 
-    const cleared = updateJobNextRoundInstruction(job.id, '')
-    assert.equal(cleared.nextRoundInstruction, null)
+    const cleared = clearPendingSteeringItems(job.id)
+    assert.deepEqual(cleared.pendingSteeringItems, [])
 
     const pausedPending = pauseJob(job.id)
     assert.equal(pausedPending.status, 'paused')

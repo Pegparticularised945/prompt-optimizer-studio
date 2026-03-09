@@ -17,6 +17,13 @@ const candidate: RoundCandidateView = {
   mve: 'Run one dry check.',
   deadEndSignals: ['Do not overfit the wording.'],
   aggregatedIssues: ['Reduce jargon.'],
+  appliedSteeringItems: [
+    {
+      id: 'steer-1',
+      text: 'Keep the 老中医 judgment tone, but preserve the original conclusion.',
+      createdAt: '2026-03-09T10:00:00.000Z',
+    },
+  ],
   judges: [
     {
       id: 'judge-1',
@@ -43,10 +50,10 @@ test('round card stays compact by default but keeps an explicit details entry po
   assert.match(html, /结构已经稳定，只剩轻微语气优化空间。/)
   assert.match(html, /查看详情/)
   assert.doesNotMatch(html, /查看优化后提示词/)
-  assert.doesNotMatch(html, /主要修改/)
+  assert.doesNotMatch(html, /本轮采用的人工引导/)
 })
 
-test('round card still reveals full diagnostics when expanded', () => {
+test('round card still reveals full diagnostics and applied steering when expanded', () => {
   const html = renderToStaticMarkup(createElement(JobRoundCard, {
     candidate,
     expanded: true,
@@ -57,4 +64,6 @@ test('round card still reveals full diagnostics when expanded', () => {
   assert.match(html, /查看优化后提示词/)
   assert.match(html, /主要修改/)
   assert.match(html, /复核结果/)
+  assert.match(html, /本轮采用的人工引导/)
+  assert.match(html, /Keep the 老中医 judgment tone, but preserve the original conclusion\./)
 })

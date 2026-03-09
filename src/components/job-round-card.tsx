@@ -1,3 +1,5 @@
+import type { SteeringItem } from '@/lib/server/types'
+
 interface JudgeRun {
   id: string
   judgeIndex: number
@@ -21,6 +23,7 @@ export interface RoundCandidateView {
   mve: string
   deadEndSignals: string[]
   aggregatedIssues: string[]
+  appliedSteeringItems: SteeringItem[]
   judges: JudgeRun[]
 }
 
@@ -57,6 +60,16 @@ export function JobRoundCard({
       </div>
       {expanded ? (
         <div className="shell round-diagnostic-body">
+          {candidate.appliedSteeringItems.length > 0 ? (
+            <div className="panel applied-steering-panel">
+              <strong>本轮采用的人工引导</strong>
+              <ul className="list compact-list">
+                {candidate.appliedSteeringItems.map((item) => (
+                  <li key={item.id}>{item.text}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <details className="fold-card" open>
             <summary>查看优化后提示词</summary>
             <pre className="pre compact">{candidate.optimizedPrompt}</pre>

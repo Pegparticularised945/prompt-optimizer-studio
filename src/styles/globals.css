@@ -418,6 +418,92 @@ main {
   min-height: 160px;
 }
 
+.steering-control-stack,
+.pending-steering-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.control-pending-list {
+  margin-top: 6px;
+}
+
+.steering-card,
+.goal-anchor-draft-note,
+.applied-steering-panel,
+.empty-inline-state {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(72, 50, 27, 0.12);
+  background: rgba(255, 252, 246, 0.82);
+}
+
+.steering-card-actionable {
+  border-color: rgba(231, 90, 99, 0.2);
+  background: rgba(255, 247, 244, 0.84);
+}
+
+.steering-card p,
+.goal-anchor-draft-note p,
+.empty-inline-state span {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.steering-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.goal-anchor-draft-note {
+  border-style: dashed;
+  border-color: rgba(231, 90, 99, 0.28);
+  background: rgba(231, 90, 99, 0.06);
+}
+
+.applied-steering-panel {
+  margin-bottom: 14px;
+}
+
+.steering-impact-card {
+  border-style: solid;
+  border-color: rgba(231, 90, 99, 0.18);
+  background: rgba(255, 246, 244, 0.82);
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  border: 1px solid rgba(72, 50, 27, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--ease-smooth),
+    border-color var(--motion-fast) var(--ease-smooth),
+    background-color var(--motion-fast) var(--ease-smooth);
+}
+
+.icon-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(231, 90, 99, 0.32);
+  background: rgba(255, 247, 244, 0.92);
+}
+
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .anchor-editor-drawer {
   margin-top: 18px;
   border: 1px dashed rgba(72, 50, 27, 0.18);

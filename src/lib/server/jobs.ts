@@ -1,9 +1,10 @@
+import { createHash } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 
 import { assignConversationGroup } from '@/lib/engine/conversation-policy'
 import { getJobDisplayError } from '@/lib/presentation'
 import { getDb } from '@/lib/server/db'
-import { deriveGoalAnchor, parseGoalAnchor, serializeGoalAnchor } from '@/lib/server/goal-anchor'
+import { deriveGoalAnchor, normalizeGoalAnchor, parseGoalAnchor, serializeGoalAnchor } from '@/lib/server/goal-anchor'
 import {
   deriveGoalAnchorExplanation,
   parseGoalAnchorExplanation,
@@ -22,6 +23,7 @@ import type {
   JobRunMode,
   JobRecord,
   JudgeRunRecord,
+  SteeringItem,
 } from '@/lib/server/types'
 
 export { getJobDisplayError }
@@ -77,6 +79,7 @@ export async function createJobs(inputs: JobInput[]) {
         max_rounds_override,
         next_round_instruction,
         next_round_instruction_updated_at,
+        pending_steering_json,
         pass_streak,
         last_review_score,
         last_review_patch_json,
@@ -88,7 +91,7 @@ export async function createJobs(inputs: JobInput[]) {
         error_message,
         created_at,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, NULL, NULL, 'pending', 'auto', ?, 0, 0, ?, ?, NULL, NULL, NULL, 0, 0, '[]', NULL, ?, ?, NULL, NULL, NULL, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, NULL, NULL, 'pending', 'auto', ?, 0, 0, ?, ?, NULL, NULL, NULL, '[]', 0, 0, '[]', NULL, ?, ?, NULL, NULL, NULL, ?, ?)
     `).run(
       id,
       normalizeTitle(input.title, normalizedPrompt),
@@ -132,6 +135,7 @@ export function listJobs() {
       jobs.max_rounds_override,
       jobs.next_round_instruction,
       jobs.next_round_instruction_updated_at,
+      jobs.pending_steering_json,
       jobs.pass_streak,
       jobs.last_review_score,
       jobs.last_review_patch_json,
@@ -180,6 +184,7 @@ export function getJobById(id: string) {
       jobs.max_rounds_override,
       jobs.next_round_instruction,
       jobs.next_round_instruction_updated_at,
+      jobs.pending_steering_json,
       jobs.pass_streak,
       jobs.last_review_score,
       jobs.last_review_patch_json,
@@ -226,6 +231,7 @@ export function getJobDetail(id: string): JobDetail | null {
       mve,
       dead_end_signals_json,
       aggregated_issues_json,
+      applied_steering_json,
       created_at
     FROM candidates
     WHERE job_id = ?
@@ -328,42 +334,114 @@ export function updateJobMaxRoundsOverride(jobId: string, maxRoundsOverride: num
   return requireJob(jobId)
 }
 
-export function updateJobGoalAnchor(jobId: string, goalAnchor: Partial<GoalAnchor>) {
+export function updateJobGoalAnchor(
+  jobId: string,
+  goalAnchor: Partial<GoalAnchor>,
+  options: { consumePendingSteeringIds?: string[] } = {},
+) {
   const job = requireJob(jobId)
   if (job.status === 'completed') {
     throw new Error('已完成任务不能修改核心目标锚点。')
   }
 
+  const now = new Date().toISOString()
   const db = getDb()
+  const normalizedGoalAnchor = normalizeGoalAnchor(goalAnchor)
+  const consumedSteeringIds = options.consumePendingSteeringIds?.length
+    ? new Set(options.consumePendingSteeringIds)
+    : null
+  const nextPendingSteeringItems = consumedSteeringIds
+    ? job.pendingSteeringItems.filter((item) => !consumedSteeringIds.has(item.id))
+    : job.pendingSteeringItems
+
   db.prepare(`
     UPDATE jobs
     SET goal_anchor_json = ?,
+        pending_steering_json = ?,
+        next_round_instruction = NULL,
+        next_round_instruction_updated_at = NULL,
         updated_at = ?
     WHERE id = ?
-  `).run(serializeGoalAnchor(goalAnchor), new Date().toISOString(), jobId)
+  `).run(
+    serializeGoalAnchor(normalizedGoalAnchor),
+    serializeSteeringItems(nextPendingSteeringItems),
+    now,
+    jobId,
+  )
 
   return requireJob(jobId)
 }
 
-export function updateJobNextRoundInstruction(jobId: string, nextRoundInstruction: string) {
+export function addPendingSteeringItem(jobId: string, text: string) {
+  const job = requireSteerableJob(jobId)
+  const normalizedText = normalizeSteeringText(text)
+  if (!normalizedText) {
+    throw new Error('请先输入一条人工引导。')
+  }
+
+  const nextItems = [
+    ...job.pendingSteeringItems,
+    {
+      id: crypto.randomUUID(),
+      text: normalizedText,
+      createdAt: new Date().toISOString(),
+    },
+  ]
+
+  return setPendingSteeringItems(jobId, nextItems)
+}
+
+export function removePendingSteeringItem(jobId: string, itemId: string) {
+  const job = requireSteerableJob(jobId)
+  return setPendingSteeringItems(jobId, job.pendingSteeringItems.filter((item) => item.id !== itemId))
+}
+
+export function clearPendingSteeringItems(jobId: string) {
+  requireSteerableJob(jobId)
+  return setPendingSteeringItems(jobId, [])
+}
+
+export function consumePendingSteeringItems(jobId: string, consumedItemIds: string[]) {
   const job = requireJob(jobId)
-  if (job.status === 'completed') {
-    throw new Error('已完成任务不能再写入下一轮人工引导。')
+  if (consumedItemIds.length === 0) {
+    return job
   }
 
-  if (job.status === 'cancelled') {
-    throw new Error('已取消任务不能再写入下一轮人工引导。')
+  const consumedSet = new Set(consumedItemIds)
+  return setPendingSteeringItems(jobId, job.pendingSteeringItems.filter((item) => !consumedSet.has(item.id)))
+}
+
+export function buildGoalAnchorDraftFromPendingSteering(jobId: string) {
+  const job = requireJob(jobId)
+  if (job.pendingSteeringItems.length === 0) {
+    throw new Error('当前没有待写入稳定锚点的人工引导。')
   }
 
-  const normalizedInstruction = normalizeNextRoundInstruction(nextRoundInstruction)
+  return {
+    goalAnchor: {
+      goal: job.goalAnchor.goal,
+      deliverable: job.goalAnchor.deliverable,
+      driftGuard: uniqueOrderedStrings([
+        ...job.goalAnchor.driftGuard,
+        ...job.pendingSteeringItems.map((item) => item.text),
+      ]),
+    },
+    consumePendingSteeringIds: job.pendingSteeringItems.map((item) => item.id),
+  }
+}
+
+export function updateJobNextRoundInstruction(jobId: string, nextRoundInstruction: string) {
+  const job = requireSteerableJob(jobId)
+  const normalizedInstruction = normalizeSteeringText(nextRoundInstruction)
   const updatedAt = normalizedInstruction
-    ? createNextInstructionUpdatedAt(job.nextRoundInstructionUpdatedAt)
+    ? createNextInstructionUpdatedAt(readLegacyNextRoundInstructionUpdatedAt(jobId))
     : null
   const db = getDb()
   db.prepare(`
     UPDATE jobs
     SET next_round_instruction = ?,
         next_round_instruction_updated_at = ?,
+        pending_steering_json = '[]',
         updated_at = ?
     WHERE id = ?
   `).run(normalizedInstruction, updatedAt, new Date().toISOString(), jobId)
@@ -578,6 +656,7 @@ export function resetJobForRetry(id: string) {
         best_average_score = 0,
         next_round_instruction = NULL,
         next_round_instruction_updated_at = NULL,
+        pending_steering_json = '[]',
         pass_streak = 0,
         last_review_score = 0,
         last_review_patch_json = '[]',
@@ -603,12 +682,15 @@ export function getOptimizerSeed(jobId: string) {
     LIMIT 1
   `).get(jobId) as Record<string, unknown> | undefined
 
+  const legacyUpdatedAt = readLegacyNextRoundInstructionUpdatedAt(jobId)
+
   return {
     currentPrompt: candidate ? String(candidate.optimized_prompt) : job.rawPrompt,
     previousFeedback: job.lastReviewPatch,
     goalAnchor: job.goalAnchor,
-    nextRoundInstruction: job.nextRoundInstruction,
-    nextRoundInstructionUpdatedAt: job.nextRoundInstructionUpdatedAt,
+    pendingSteeringItems: job.pendingSteeringItems,
+    nextRoundInstruction: job.pendingSteeringItems[0]?.text ?? null,
+    nextRoundInstructionUpdatedAt: legacyUpdatedAt,
   }
 }
 
@@ -622,6 +704,7 @@ export function createCandidateWithJudges(jobId: string, input: {
   mve: string
   deadEndSignals: string[]
   aggregatedIssues: string[]
+  appliedSteeringItems?: SteeringItem[]
   judgments: JudgeRunRecord[]
 }) {
   const db = getDb()
@@ -641,8 +724,9 @@ export function createCandidateWithJudges(jobId: string, input: {
       mve,
       dead_end_signals_json,
       aggregated_issues_json,
+      applied_steering_json,
       created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     candidateId,
     jobId,
@@ -655,6 +739,7 @@ export function createCandidateWithJudges(jobId: string, input: {
     input.mve,
     JSON.stringify(compactFeedback(input.deadEndSignals, { maxItems: 6, maxItemLength: 140 })),
     JSON.stringify(compactFeedback(input.aggregatedIssues, { maxItems: 8, maxItemLength: 180 })),
+    serializeSteeringItems(input.appliedSteeringItems ?? []),
     createdAt,
   )
 
@@ -926,9 +1011,107 @@ function normalizeMaxRoundsOverride(value: number | null) {
   return Math.min(99, Math.max(1, Math.round(numeric)))
 }
 
-function normalizeNextRoundInstruction(value: string) {
-  const normalized = value.trim()
+function normalizeSteeringText(value: string) {
+  const normalized = value.replace(/\s+/g, ' ').trim()
   return normalized || null
+}
+
+function normalizeNextRoundInstruction(value: string) {
+  return normalizeSteeringText(value)
+}
+
+function normalizeSteeringItems(items: SteeringItem[]) {
+  const seen = new Set<string>()
+  const result: SteeringItem[] = []
+
+  for (const item of items) {
+    const text = normalizeSteeringText(item.text ?? '')
+    const id = item.id?.trim() || crypto.randomUUID()
+    if (!text || seen.has(id)) {
+      continue
+    }
+
+    seen.add(id)
+    result.push({
+      id,
+      text,
+      createdAt: normalizeTimestamp(item.createdAt),
+    })
+  }
+
+  return result
+}
+
+function serializeSteeringItems(items: SteeringItem[]) {
+  return JSON.stringify(normalizeSteeringItems(items))
+}
+
+function parseSteeringItems(value: unknown, legacyText?: string | null, legacyUpdatedAt?: string | null) {
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value)
+      if (Array.isArray(parsed)) {
+        const normalized = normalizeSteeringItems(parsed.map((item) => ({
+          id: typeof item?.id === 'string' ? item.id : '',
+          text: typeof item?.text === 'string' ? item.text : '',
+          createdAt: typeof item?.createdAt === 'string' ? item.createdAt : '',
+        })))
+        if (normalized.length > 0) {
+          return normalized
+        }
+      }
+    } catch {
+      // Fall through to legacy compatibility mapping.
+    }
+  }
+
+  const normalizedLegacyText = typeof legacyText === 'string' ? normalizeSteeringText(legacyText) : null
+  if (!normalizedLegacyText) {
+    return []
+  }
+
+  return [{
+    id: buildLegacySteeringId(normalizedLegacyText, legacyUpdatedAt ?? null),
+    text: normalizedLegacyText,
+    createdAt: normalizeTimestamp(legacyUpdatedAt),
+  }]
+}
+
+function setPendingSteeringItems(jobId: string, items: SteeringItem[]) {
+  const db = getDb()
+  db.prepare(`
+    UPDATE jobs
+    SET pending_steering_json = ?,
+        next_round_instruction = NULL,
+        next_round_instruction_updated_at = NULL,
+        updated_at = ?
+    WHERE id = ?
+  `).run(serializeSteeringItems(items), new Date().toISOString(), jobId)
+
+  return requireJob(jobId)
+}
+
+function requireSteerableJob(jobId: string) {
+  const job = requireJob(jobId)
+  if (job.status === 'completed') {
+    throw new Error('已完成任务不能再写入下一轮人工引导。')
+  }
+
+  if (job.status === 'cancelled') {
+    throw new Error('已取消任务不能再写入下一轮人工引导。')
+  }
+
+  return job
+}
+
+function readLegacyNextRoundInstructionUpdatedAt(jobId: string) {
+  const row = getDb().prepare(`
+    SELECT next_round_instruction_updated_at
+    FROM jobs
+    WHERE id = ?
+  `).get(jobId) as { next_round_instruction_updated_at?: string | null } | undefined
+
+  return row?.next_round_instruction_updated_at ? String(row.next_round_instruction_updated_at) : null
 }
 
 function createNextInstructionUpdatedAt(previousUpdatedAt: string | null) {
@@ -943,6 +1126,35 @@ function createNextInstructionUpdatedAt(previousUpdatedAt: string | null) {
   }
 
   return new Date(previousTime + 1).toISOString()
+}
+
+function buildLegacySteeringId(text: string, updatedAt: string | null) {
+  return `legacy-${createHash('sha1').update(`${updatedAt ?? ''}:${text}`).digest('hex').slice(0, 12)}`
+}
+
+function normalizeTimestamp(value: string | null | undefined) {
+  if (!value) {
+    return new Date().toISOString()
+  }
+
+  const parsed = Date.parse(value)
+  return Number.isNaN(parsed) ? new Date().toISOString() : new Date(parsed).toISOString()
+}
+
+function uniqueOrderedStrings(values: string[]) {
+  const seen = new Set<string>()
+  const result: string[] = []
+
+  for (const value of values) {
+    const normalized = value.replace(/\s+/g, ' ').trim()
+    if (!normalized || seen.has(normalized)) {
+      continue
+    }
+    seen.add(normalized)
+    result.push(normalized)
+  }
+
+  return result
 }
 
 function resolveEffectiveMaxRounds(job: Pick<JobRecord, 'maxRoundsOverride'>, defaultMaxRounds: number) {
@@ -969,7 +1181,11 @@ function mapJobRow(row: Record<string, unknown>): JobRecord {
     maxRoundsOverride: row.max_rounds_override === null || row.max_rounds_override === undefined
       ? null
       : Number(row.max_rounds_override),
-    nextRoundInstruction: row.next_round_instruction ? String(row.next_round_instruction) : null,
+    pendingSteeringItems: parseSteeringItems(
+      row.pending_steering_json,
+      row.next_round_instruction ? String(row.next_round_instruction) : null,
+      row.next_round_instruction_updated_at ? String(row.next_round_instruction_updated_at) : null,
+    ),
     passStreak: Number(row.pass_streak ?? 0),
     lastReviewScore: Number(row.last_review_score ?? 0),
     lastReviewPatch: parseJsonArray(row.last_review_patch_json),
@@ -978,9 +1194,6 @@ function mapJobRow(row: Record<string, unknown>): JobRecord {
     conversationGroupId: row.conversation_group_id ? String(row.conversation_group_id) : null,
     cancelRequestedAt: row.cancel_requested_at ? String(row.cancel_requested_at) : null,
     pauseRequestedAt: row.pause_requested_at ? String(row.pause_requested_at) : null,
-    nextRoundInstructionUpdatedAt: row.next_round_instruction_updated_at
-      ? String(row.next_round_instruction_updated_at)
-      : null,
     errorMessage: row.error_message ? String(row.error_message) : null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
@@ -1000,6 +1213,7 @@ function mapCandidateRow(row: Record<string, unknown>): CandidateRecord {
     mve: String(row.mve),
     deadEndSignals: parseJsonArray(row.dead_end_signals_json),
     aggregatedIssues: parseJsonArray(row.aggregated_issues_json),
+    appliedSteeringItems: parseSteeringItems(row.applied_steering_json),
     createdAt: String(row.created_at),
   }
 }

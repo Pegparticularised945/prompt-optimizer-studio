@@ -4,6 +4,12 @@ import type { RoundJudgment } from '@/lib/engine/optimization-cycle'
 export type JobStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'manual_review' | 'cancelled'
 export type JobRunMode = 'auto' | 'step'
 
+export interface SteeringItem {
+  id: string
+  text: string
+  createdAt: string
+}
+
 export interface GoalAnchor {
   goal: string
   deliverable: string
@@ -55,7 +61,7 @@ export interface JobRecord {
   goalAnchor: GoalAnchor
   goalAnchorExplanation: GoalAnchorExplanation
   maxRoundsOverride: number | null
-  nextRoundInstruction: string | null
+  pendingSteeringItems: SteeringItem[]
   passStreak: number
   lastReviewScore: number
   lastReviewPatch: string[]
@@ -64,7 +70,6 @@ export interface JobRecord {
   conversationGroupId: string | null
   cancelRequestedAt: string | null
   pauseRequestedAt: string | null
-  nextRoundInstructionUpdatedAt: string | null
   errorMessage: string | null
   createdAt: string
   updatedAt: string
@@ -82,6 +87,7 @@ export interface CandidateRecord {
   mve: string
   deadEndSignals: string[]
   aggregatedIssues: string[]
+  appliedSteeringItems: SteeringItem[]
   createdAt: string
 }
 

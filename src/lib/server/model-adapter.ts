@@ -1,7 +1,7 @@
 import type { ModelAdapter, OptimizationResult, RoundJudgment } from '@/lib/engine/optimization-cycle'
 import { normalizeGoalAnchor } from '@/lib/server/goal-anchor'
 import { normalizeGoalAnchorExplanation } from '@/lib/server/goal-anchor-explanation'
-import type { GoalAnchor, GoalAnchorExplanation, PromptPackVersion, AppSettings } from '@/lib/server/types'
+import type { GoalAnchor, GoalAnchorExplanation, PromptPackVersion, AppSettings, SteeringItem } from '@/lib/server/types'
 import { extractJsonObject } from '@/lib/server/json'
 import { buildGoalAnchorPrompts, buildJudgePrompts, buildOptimizerPrompts } from '@/lib/server/prompting'
 
@@ -29,7 +29,7 @@ export class CpamcModelAdapter implements ModelAdapter {
     currentPrompt: string
     previousFeedback: string[]
     goalAnchor: GoalAnchor
-    nextRoundInstruction?: string | null
+    pendingSteeringItems?: SteeringItem[]
     threshold: number
   }): Promise<OptimizationResult> {
     const { system, user } = buildOptimizerPrompts({
@@ -37,7 +37,7 @@ export class CpamcModelAdapter implements ModelAdapter {
       currentPrompt: input.currentPrompt,
       previousFeedback: input.previousFeedback,
       goalAnchor: input.goalAnchor,
-      nextRoundInstruction: input.nextRoundInstruction,
+      pendingSteeringItems: input.pendingSteeringItems,
       threshold: input.threshold,
     })
 

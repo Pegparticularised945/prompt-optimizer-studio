@@ -69,6 +69,7 @@ export function getDb() {
       max_rounds_override INTEGER,
       next_round_instruction TEXT,
       next_round_instruction_updated_at TEXT,
+      pending_steering_json TEXT NOT NULL DEFAULT '[]',
       pass_streak INTEGER NOT NULL DEFAULT 0,
       last_review_score REAL NOT NULL DEFAULT 0,
       last_review_patch_json TEXT NOT NULL DEFAULT '[]',
@@ -97,6 +98,7 @@ export function getDb() {
       mve TEXT NOT NULL,
       dead_end_signals_json TEXT NOT NULL,
       aggregated_issues_json TEXT NOT NULL,
+      applied_steering_json TEXT NOT NULL DEFAULT '[]',
       created_at TEXT NOT NULL,
       FOREIGN KEY (job_id) REFERENCES jobs(id)
     );
@@ -135,6 +137,7 @@ export function getDb() {
   ensureColumn(db, 'jobs', 'max_rounds_override', 'INTEGER')
   ensureColumn(db, 'jobs', 'next_round_instruction', 'TEXT')
   ensureColumn(db, 'jobs', 'next_round_instruction_updated_at', 'TEXT')
+  ensureColumn(db, 'jobs', 'pending_steering_json', "TEXT NOT NULL DEFAULT '[]'")
   ensureColumn(db, 'jobs', 'active_worker_id', 'TEXT')
   ensureColumn(db, 'jobs', 'worker_heartbeat_at', 'TEXT')
   ensureColumn(db, 'jobs', 'cancel_requested_at', 'TEXT')
@@ -142,6 +145,7 @@ export function getDb() {
   ensureColumn(db, 'jobs', 'pass_streak', 'INTEGER NOT NULL DEFAULT 0')
   ensureColumn(db, 'jobs', 'last_review_score', 'REAL NOT NULL DEFAULT 0')
   ensureColumn(db, 'jobs', 'last_review_patch_json', "TEXT NOT NULL DEFAULT '[]'")
+  ensureColumn(db, 'candidates', 'applied_steering_json', "TEXT NOT NULL DEFAULT '[]'")
   ensureColumn(db, 'judge_runs', 'drift_labels_json', "TEXT NOT NULL DEFAULT '[]'")
   ensureColumn(db, 'judge_runs', 'drift_explanation', "TEXT NOT NULL DEFAULT ''")
 

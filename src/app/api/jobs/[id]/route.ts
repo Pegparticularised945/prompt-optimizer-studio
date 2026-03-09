@@ -1,9 +1,26 @@
 import { NextResponse } from 'next/server'
 
-import { getJobDetail, getJobById, updateJobGoalAnchor, updateJobMaxRoundsOverride, updateJobModels, updateJobNextRoundInstruction } from '@/lib/server/jobs'
+import {
+  addPendingSteeringItem,
+  buildGoalAnchorDraftFromPendingSteering,
+  clearPendingSteeringItems,
+  getJobDetail,
+  getJobById,
+  removePendingSteeringItem,
+  updateJobGoalAnchor,
+  updateJobMaxRoundsOverride,
+  updateJobModels,
+  updateJobNextRoundInstruction,
+} from '@/lib/server/jobs'
 import { ensureWorkerStarted } from '@/lib/server/worker'
 
 export const runtime = 'nodejs'
+
+type SteeringAction =
+  | { type: 'add'; text: string }
+  | { type: 'remove'; itemId: string }
+  | { type: 'clear' }
+  | { type: 'build_goal_anchor_draft' }
 
 export async function GET(
   _request: Request,
@@ -36,14 +53,19 @@ export async function PATCH(
       judgeModel?: string
       maxRoundsOverride?: number | null
       nextRoundInstruction?: string
+      steeringAction?: SteeringAction
       goalAnchor?: {
         goal?: string
         deliverable?: string
         driftGuard?: string[]
       }
+      consumePendingSteeringIds?: string[]
     }
 
     let updatedJob = job
+    let goalAnchorDraft: ReturnType<typeof buildGoalAnchorDraftFromPendingSteering>['goalAnchor'] | null = null
+    let consumePendingSteeringIds: string[] = []
+
     if (body.optimizerModel !== undefined || body.judgeModel !== undefined) {
       updatedJob = updateJobModels(id, {
         optimizerModel: body.optimizerModel ?? '',
@@ -53,14 +75,38 @@ export async function PATCH(
     if (Object.hasOwn(body, 'maxRoundsOverride')) {
       updatedJob = updateJobMaxRoundsOverride(id, body.maxRoundsOverride ?? null)
     }
+    if (body.steeringAction) {
+      switch (body.steeringAction.type) {
+        case 'add':
+          updatedJob = addPendingSteeringItem(id, body.steeringAction.text)
+          break
+        case 'remove':
+          updatedJob = removePendingSteeringItem(id, body.steeringAction.itemId)
+          break
+        case 'clear':
+          updatedJob = clearPendingSteeringItems(id)
+          break
+        case 'build_goal_anchor_draft': {
+          const draft = buildGoalAnchorDraftFromPendingSteering(id)
+          goalAnchorDraft = draft.goalAnchor
+          consumePendingSteeringIds = draft.consumePendingSteeringIds
+          updatedJob = getJobById(id) ?? updatedJob
+          break
+        }
+        default:
+          break
+      }
+    }
     if (Object.hasOwn(body, 'nextRoundInstruction')) {
       updatedJob = updateJobNextRoundInstruction(id, body.nextRoundInstruction ?? '')
     }
     if (Object.hasOwn(body, 'goalAnchor')) {
-      updatedJob = updateJobGoalAnchor(id, body.goalAnchor ?? {})
+      updatedJob = updateJobGoalAnchor(id, body.goalAnchor ?? {}, {
+        consumePendingSteeringIds: body.consumePendingSteeringIds ?? [],
+      })
     }
 
-    return NextResponse.json({ job: updatedJob })
+    return NextResponse.json({ job: updatedJob, goalAnchorDraft, consumePendingSteeringIds })
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update job models.' },

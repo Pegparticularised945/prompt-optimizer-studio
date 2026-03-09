@@ -3,7 +3,7 @@ import { CpamcModelAdapter } from '@/lib/server/model-adapter'
 import {
   applyPendingJobModels,
   claimNextRunnableJob,
-  clearConsumedNextRoundInstruction,
+  consumePendingSteeringItems,
   createCandidateWithJudges,
   finalizeCancelledJob,
   getJobById,
@@ -154,8 +154,7 @@ async function runJob(jobId: string) {
         currentPrompt,
         previousFeedback,
         goalAnchor,
-        nextRoundInstruction,
-        nextRoundInstructionUpdatedAt,
+        pendingSteeringItems,
       } = getOptimizerSeed(jobId)
       const roundNumber = activeJob.currentRound + 1
       const result = await runOptimizationCycle({
@@ -165,7 +164,7 @@ async function runJob(jobId: string) {
         previousBestScore: activeJob.bestAverageScore,
         previousFeedback,
         goalAnchor,
-        nextRoundInstruction,
+        pendingSteeringItems,
       })
 
       const review = result.review
@@ -196,6 +195,7 @@ async function runJob(jobId: string) {
         mve: result.mve,
         deadEndSignals: result.deadEndSignals,
         aggregatedIssues: result.aggregatedIssues,
+        appliedSteeringItems: pendingSteeringItems,
         judgments,
       })
 
@@ -228,7 +228,7 @@ async function runJob(jobId: string) {
             ? '达到最大轮数，仍未连续三次复核通过。'
             : null,
       })
-      clearConsumedNextRoundInstruction(jobId, nextRoundInstructionUpdatedAt)
+      consumePendingSteeringItems(jobId, pendingSteeringItems.map((item) => item.id))
 
       if (finalStatus === 'completed' || finalStatus === 'manual_review' || finalStatus === 'paused') {
         return

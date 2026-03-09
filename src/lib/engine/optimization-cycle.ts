@@ -1,4 +1,4 @@
-import type { GoalAnchor } from '@/lib/server/types'
+import type { GoalAnchor, SteeringItem } from '@/lib/server/types'
 
 export interface RoundJudgment {
   score: number
@@ -24,7 +24,7 @@ export interface ModelAdapter {
     currentPrompt: string
     previousFeedback: string[]
     goalAnchor: GoalAnchor
-    nextRoundInstruction?: string | null
+    pendingSteeringItems?: SteeringItem[]
     threshold: number
   }): Promise<OptimizationResult>
   judgePrompt(prompt: string, judgeIndex: number, goalAnchor: GoalAnchor): Promise<RoundJudgment>
@@ -37,7 +37,7 @@ export interface OptimizationCycleInput {
   previousBestScore: number
   previousFeedback?: string[]
   goalAnchor: GoalAnchor
-  nextRoundInstruction?: string | null
+  pendingSteeringItems?: SteeringItem[]
 }
 
 export interface OptimizationCycleResult extends OptimizationResult {
@@ -80,13 +80,13 @@ export async function runOptimizationCycle({
   previousBestScore,
   previousFeedback = [],
   goalAnchor,
-  nextRoundInstruction = null,
+  pendingSteeringItems = [],
 }: OptimizationCycleInput): Promise<OptimizationCycleResult> {
   const optimization = await adapter.optimizePrompt({
     currentPrompt,
     previousFeedback,
     goalAnchor,
-    nextRoundInstruction,
+    pendingSteeringItems,
     threshold,
   })
 

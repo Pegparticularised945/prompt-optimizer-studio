@@ -24,7 +24,7 @@ test('compactFeedback keeps only unique high-signal items', () => {
   ])
 })
 
-test('optimizer prompt includes one-shot steering for the next round', () => {
+test('optimizer prompt includes all pending steering items in stable order', () => {
   const prompts = buildOptimizerPrompts({
     pack: {
       id: 'pack-1',
@@ -36,7 +36,18 @@ test('optimizer prompt includes one-shot steering for the next round', () => {
     },
     currentPrompt: 'draft prompt',
     previousFeedback: ['tighten output schema'],
-    nextRoundInstruction: 'Keep the wording warmer and reduce compliance jargon.',
+    pendingSteeringItems: [
+      {
+        id: 'steer-1',
+        text: 'Keep the wording warmer and reduce compliance jargon.',
+        createdAt: '2026-03-09T10:00:00.000Z',
+      },
+      {
+        id: 'steer-2',
+        text: 'Keep the 老中医 judgment style, but do not change the final deliverable.',
+        createdAt: '2026-03-09T10:01:00.000Z',
+      },
+    ],
     goalAnchor: {
       goal: 'Keep the original triage task.',
       deliverable: 'Return a structured triage decision.',
@@ -45,12 +56,13 @@ test('optimizer prompt includes one-shot steering for the next round', () => {
     threshold: 95,
   })
 
-  assert.match(prompts.user, /Keep the wording warmer and reduce compliance jargon\./)
+  assert.match(prompts.user, /1\. Keep the wording warmer and reduce compliance jargon\./)
+  assert.match(prompts.user, /2\. Keep the 老中医 judgment style, but do not change the final deliverable\./)
   assert.match(prompts.user, /Keep the original triage task\./)
   assert.match(prompts.user, /High-signal feedback from the previous round:/)
 })
 
-test('judge prompt remains isolated from next-round steering', () => {
+test('judge prompt remains isolated from pending steering raw text', () => {
   const prompts = buildJudgePrompts({
     pack: {
       id: 'pack-1',
@@ -75,8 +87,9 @@ test('judge prompt remains isolated from next-round steering', () => {
   assert.match(prompts.system, /deliverable_missing/i)
   assert.match(prompts.system, /over_safety_generalization/i)
   assert.match(prompts.user, /Return a structured triage decision\./)
-  assert.doesNotMatch(prompts.system, /next round steering/i)
+  assert.doesNotMatch(prompts.system, /pending steering/i)
   assert.doesNotMatch(prompts.user, /Keep the wording warmer/)
+  assert.doesNotMatch(prompts.user, /Keep the 老中医 judgment style/)
 })
 
 test('goal anchor generation prompt preserves the task and forbids generic safety drift', () => {

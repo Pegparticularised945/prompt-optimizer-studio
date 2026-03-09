@@ -1,5 +1,5 @@
 import { formatGoalAnchorForPrompt } from '@/lib/server/goal-anchor'
-import type { GoalAnchor, PromptPackVersion } from '@/lib/server/types'
+import type { GoalAnchor, PromptPackVersion, SteeringItem } from '@/lib/server/types'
 
 export function compactFeedback(
   feedback: string[],
@@ -30,7 +30,7 @@ export function buildOptimizerPrompts(input: {
   currentPrompt: string
   previousFeedback: string[]
   goalAnchor: GoalAnchor
-  nextRoundInstruction?: string | null
+  pendingSteeringItems?: SteeringItem[]
   threshold: number
 }) {
   const system = [
@@ -49,6 +49,7 @@ export function buildOptimizerPrompts(input: {
   ].join('\n\n')
 
   const compactedFeedback = compactFeedback(input.previousFeedback)
+  const steeringText = formatSteeringItemsForPrompt(input.pendingSteeringItems ?? [])
   const user = [
     `Threshold: ${input.threshold}`,
     'Non-negotiable goal anchor:',
@@ -60,7 +61,7 @@ export function buildOptimizerPrompts(input: {
       ? compactedFeedback.map((item, index) => `${index + 1}. ${item}`).join('\n')
       : 'None',
     'User steering for the next round:',
-    input.nextRoundInstruction?.trim() || 'None',
+    steeringText,
     'Return only JSON.',
   ].join('\n\n')
 
@@ -121,4 +122,14 @@ export function buildGoalAnchorPrompts(input: {
   ].join('\n\n')
 
   return { system, user }
+}
+
+function formatSteeringItemsForPrompt(items: SteeringItem[]) {
+  if (items.length === 0) {
+    return 'None'
+  }
+
+  return items
+    .map((item, index) => `${index + 1}. ${item.text}`)
+    .join('\n')
 }

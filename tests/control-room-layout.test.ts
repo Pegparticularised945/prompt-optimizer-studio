@@ -75,6 +75,7 @@ test('job detail control room keeps result before goal, controls, and diagnostic
       savingModels: false,
       savingMaxRounds: false,
       savingSteering: false,
+      generatingGoalAnchorDraft: false,
       savingGoalAnchor: false,
       retrying: false,
       cancelling: false,
@@ -87,16 +88,20 @@ test('job detail control room keeps result before goal, controls, and diagnostic
     form: {
       taskModel: 'gpt-5.2',
       maxRoundsOverrideValue: '12',
-      nextRoundInstruction: '保持结果导向',
+      pendingSteeringInput: '保持结果导向',
       goalAnchorGoal: '保持原始任务目标',
       goalAnchorDeliverable: '输出完整优化提示词',
       goalAnchorDriftGuardText: '不要偏离目标',
+      goalAnchorDraftReady: false,
     },
     handlers: {
       onRetry: () => {},
       onSaveModel: () => {},
       onSaveMaxRoundsOverride: () => {},
-      onSaveNextRoundInstruction: () => {},
+      onAddPendingSteering: () => {},
+      onRemovePendingSteeringItem: () => {},
+      onClearPendingSteering: () => {},
+      onGenerateGoalAnchorDraft: () => {},
       onSaveGoalAnchor: () => {},
       onPauseTask: () => {},
       onResumeStep: () => {},
@@ -106,7 +111,7 @@ test('job detail control room keeps result before goal, controls, and diagnostic
       onToggleRound: () => {},
       onTaskModelChange: () => {},
       onMaxRoundsOverrideChange: () => {},
-      onNextRoundInstructionChange: () => {},
+      onPendingSteeringInputChange: () => {},
       onGoalAnchorGoalChange: () => {},
       onGoalAnchorDeliverableChange: () => {},
       onGoalAnchorDriftGuardChange: () => {},
@@ -124,10 +129,20 @@ test('job detail control room keeps result before goal, controls, and diagnostic
   assert.ok(diagnosticIndex > controlIndex)
 })
 
-
-test('job detail exposes an active goal view when next-round steering exists', () => {
+test('job detail exposes pending steering cards and goal-anchor merge entry when steering exists', () => {
   const steeredModel = makeDetailModel()
-  steeredModel.nextRoundInstruction = '语气更直接，但保留老中医式判断和原有核心结论。'
+  steeredModel.pendingSteeringItems = [
+    {
+      id: 'steer-1',
+      text: '语气更直接，但保留老中医式判断和原有核心结论。',
+      createdAt: '2026-03-09T10:00:00.000Z',
+    },
+    {
+      id: 'steer-2',
+      text: '最终给我的仍然应该是可一键复制的完整提示词。',
+      createdAt: '2026-03-09T10:01:00.000Z',
+    },
+  ]
 
   const html = renderToStaticMarkup(createElement(JobDetailControlRoom, {
     model: steeredModel,
@@ -139,6 +154,7 @@ test('job detail exposes an active goal view when next-round steering exists', (
       savingModels: false,
       savingMaxRounds: false,
       savingSteering: false,
+      generatingGoalAnchorDraft: false,
       savingGoalAnchor: false,
       retrying: false,
       cancelling: false,
@@ -151,16 +167,20 @@ test('job detail exposes an active goal view when next-round steering exists', (
     form: {
       taskModel: 'gpt-5.2',
       maxRoundsOverrideValue: '12',
-      nextRoundInstruction: steeredModel.nextRoundInstruction,
+      pendingSteeringInput: '',
       goalAnchorGoal: '保持原始任务目标',
       goalAnchorDeliverable: '输出完整优化提示词',
       goalAnchorDriftGuardText: '不要偏离目标',
+      goalAnchorDraftReady: false,
     },
     handlers: {
       onRetry: () => {},
       onSaveModel: () => {},
       onSaveMaxRoundsOverride: () => {},
-      onSaveNextRoundInstruction: () => {},
+      onAddPendingSteering: () => {},
+      onRemovePendingSteeringItem: () => {},
+      onClearPendingSteering: () => {},
+      onGenerateGoalAnchorDraft: () => {},
       onSaveGoalAnchor: () => {},
       onPauseTask: () => {},
       onResumeStep: () => {},
@@ -170,7 +190,7 @@ test('job detail exposes an active goal view when next-round steering exists', (
       onToggleRound: () => {},
       onTaskModelChange: () => {},
       onMaxRoundsOverrideChange: () => {},
-      onNextRoundInstructionChange: () => {},
+      onPendingSteeringInputChange: () => {},
       onGoalAnchorGoalChange: () => {},
       onGoalAnchorDeliverableChange: () => {},
       onGoalAnchorDriftGuardChange: () => {},
@@ -178,10 +198,12 @@ test('job detail exposes an active goal view when next-round steering exists', (
   }))
 
   assert.match(html, /当前有效目标视图/)
-  assert.match(html, /已追加下一轮人工引导/)
+  assert.match(html, /待生效引导/)
   assert.match(html, /语气更直接，但保留老中医式判断和原有核心结论。/)
-  assert.match(html, /这条引导会直接进入下一轮 optimizer/)
-  assert.match(html, /编辑稳定锚点/)
+  assert.match(html, /最终给我的仍然应该是可一键复制的完整提示词。/)
+  assert.match(html, /当前这组引导会怎样影响下一轮/)
+  assert.match(html, /写入稳定锚点/)
+  assert.match(html, /reviewer 不会看到这些引导原文/)
 })
 
 test('settings control room groups connection, defaults, and runtime strategy', () => {
@@ -262,7 +284,7 @@ function makeDetailModel(): JobDetailViewModel {
     pendingJudgeModel: null,
     cancelRequestedAt: null,
     pauseRequestedAt: null,
-    nextRoundInstruction: null,
+    pendingSteeringItems: [],
     goalAnchor: {
       goal: '保持原始任务目标',
       deliverable: '输出完整优化提示词',

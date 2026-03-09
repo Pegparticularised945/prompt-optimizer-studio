@@ -7,6 +7,7 @@ import { JobDetailControlRoom, type JobDetailViewModel } from '@/components/job-
 import { type RoundCandidateView } from '@/components/job-round-card'
 import { StudioFrame } from '@/components/studio-frame'
 import { getTaskModelLabel, resolveLatestFullPrompt } from '@/lib/presentation'
+import type { SteeringItem } from '@/lib/server/types'
 
 type JobStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'manual_review' | 'cancelled'
 type JobRunMode = 'auto' | 'step'
@@ -36,6 +37,12 @@ interface SettingsPayload {
   maxRounds: number
 }
 
+interface GoalAnchorPayload {
+  goal: string
+  deliverable: string
+  driftGuard: string[]
+}
+
 interface JobDetailPayload {
   job: {
     id: string
@@ -47,12 +54,8 @@ interface JobDetailPayload {
     pendingJudgeModel: string | null
     cancelRequestedAt: string | null
     pauseRequestedAt: string | null
-    nextRoundInstruction: string | null
-    goalAnchor: {
-      goal: string
-      deliverable: string
-      driftGuard: string[]
-    }
+    pendingSteeringItems: SteeringItem[]
+    goalAnchor: GoalAnchorPayload
     goalAnchorExplanation: {
       sourceSummary: string
       rationale: string[]
@@ -76,13 +79,14 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
   const [settings, setSettings] = useState<SettingsPayload>({ maxRounds: 8 })
   const [taskModel, setTaskModel] = useState('')
   const [maxRoundsOverrideValue, setMaxRoundsOverrideValue] = useState('')
-  const [nextRoundInstruction, setNextRoundInstruction] = useState('')
+  const [pendingSteeringInput, setPendingSteeringInput] = useState('')
   const [goalAnchorGoal, setGoalAnchorGoal] = useState('')
   const [goalAnchorDeliverable, setGoalAnchorDeliverable] = useState('')
   const [goalAnchorDriftGuardText, setGoalAnchorDriftGuardText] = useState('')
+  const [goalAnchorDraftReady, setGoalAnchorDraftReady] = useState(false)
+  const [goalAnchorDraftConsumeIds, setGoalAnchorDraftConsumeIds] = useState<string[]>([])
   const [modelDirty, setModelDirty] = useState(false)
   const [maxRoundsDirty, setMaxRoundsDirty] = useState(false)
-  const [steeringDirty, setSteeringDirty] = useState(false)
   const [goalAnchorDirty, setGoalAnchorDirty] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -90,6 +94,7 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
   const [savingModels, setSavingModels] = useState(false)
   const [savingMaxRounds, setSavingMaxRounds] = useState(false)
   const [savingSteering, setSavingSteering] = useState(false)
+  const [generatingGoalAnchorDraft, setGeneratingGoalAnchorDraft] = useState(false)
   const [savingGoalAnchor, setSavingGoalAnchor] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [pausing, setPausing] = useState(false)
@@ -156,15 +161,12 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
   }, [detail, maxRoundsDirty])
 
   useEffect(() => {
-    if (!detail || steeringDirty) return
-    setNextRoundInstruction(detail.job.nextRoundInstruction ?? '')
-  }, [detail, steeringDirty])
-
-  useEffect(() => {
     if (!detail || goalAnchorDirty) return
     setGoalAnchorGoal(detail.job.goalAnchor.goal)
     setGoalAnchorDeliverable(detail.job.goalAnchor.deliverable)
     setGoalAnchorDriftGuardText(detail.job.goalAnchor.driftGuard.join('\n'))
+    setGoalAnchorDraftReady(false)
+    setGoalAnchorDraftConsumeIds([])
   }, [detail, goalAnchorDirty])
 
   const model = useMemo<JobDetailViewModel | null>(() => {
@@ -180,7 +182,7 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
       pendingJudgeModel: detail.job.pendingJudgeModel,
       cancelRequestedAt: detail.job.cancelRequestedAt,
       pauseRequestedAt: detail.job.pauseRequestedAt,
-      nextRoundInstruction: detail.job.nextRoundInstruction,
+      pendingSteeringItems: detail.job.pendingSteeringItems,
       goalAnchor: detail.job.goalAnchor,
       goalAnchorExplanation: detail.job.goalAnchorExplanation,
       runMode: detail.job.runMode,
@@ -197,6 +199,15 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
     }
   }, [detail, jobId, settings.maxRounds])
 
+  function mergeJobUpdate(jobPatch: JobDetailPayload['job']) {
+    setDetail((current) => current ? { ...current, job: { ...current.job, ...jobPatch } } : current)
+  }
+
+  function resetDraftState() {
+    setGoalAnchorDraftReady(false)
+    setGoalAnchorDraftConsumeIds([])
+  }
+
   async function retry() {
     setRetrying(true)
     try {
@@ -207,8 +218,9 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
       setActionMessage('任务已重新开始。')
       setModelDirty(false)
       setMaxRoundsDirty(false)
-      setSteeringDirty(false)
       setGoalAnchorDirty(false)
+      resetDraftState()
+      setPendingSteeringInput('')
       setExpandedRounds({})
       setDetail((current) => current ? { ...current, job: { ...current.job, ...payload.job }, candidates: [] } : current)
     } catch (retryError) {
@@ -232,7 +244,7 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
       setError(null)
       setModelDirty(false)
       setActionMessage(detail?.job.status === 'running' ? '任务模型已保存，将在下一轮生效。' : '任务模型已保存。')
-      setDetail((current) => current ? { ...current, job: { ...current.job, ...payload.job } } : current)
+      mergeJobUpdate(payload.job)
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Save failed.')
       setActionMessage(null)
@@ -255,7 +267,7 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
       setError(null)
       setMaxRoundsDirty(false)
       setActionMessage(detail?.job.status === 'running' ? '任务级最大轮数已保存，将在下一轮检查时生效。' : '任务级最大轮数已保存。')
-      setDetail((current) => current ? { ...current, job: { ...current.job, ...payload.job } } : current)
+      mergeJobUpdate(payload.job)
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Save failed.')
       setActionMessage(null)
@@ -264,25 +276,99 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
     }
   }
 
-  async function saveNextRoundInstruction() {
+  async function addPendingSteering() {
     setSavingSteering(true)
     try {
       const response = await fetch(`/api/jobs/${jobId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nextRoundInstruction }),
+        body: JSON.stringify({ steeringAction: { type: 'add', text: pendingSteeringInput } }),
       })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error ?? 'Save failed.')
       setError(null)
-      setSteeringDirty(false)
-      setActionMessage(detail?.job.status === 'running' ? '人工引导已保存，将在下一轮生效。' : '人工引导已保存，继续运行后生效。')
-      setDetail((current) => current ? { ...current, job: { ...current.job, ...payload.job } } : current)
+      setActionMessage(detail?.job.status === 'running' ? '人工引导已加入待生效列表，将在下一轮生效。' : '人工引导已加入待生效列表。')
+      setPendingSteeringInput('')
+      resetDraftState()
+      mergeJobUpdate(payload.job)
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Save failed.')
       setActionMessage(null)
     } finally {
       setSavingSteering(false)
+    }
+  }
+
+  async function removePendingSteeringItem(itemId: string) {
+    setSavingSteering(true)
+    try {
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ steeringAction: { type: 'remove', itemId } }),
+      })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error ?? 'Save failed.')
+      setError(null)
+      setActionMessage('已删除这条待生效引导。')
+      resetDraftState()
+      mergeJobUpdate(payload.job)
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Save failed.')
+      setActionMessage(null)
+    } finally {
+      setSavingSteering(false)
+    }
+  }
+
+  async function clearPendingSteering() {
+    setSavingSteering(true)
+    try {
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ steeringAction: { type: 'clear' } }),
+      })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error ?? 'Clear failed.')
+      setError(null)
+      setActionMessage('待生效引导已清空。')
+      resetDraftState()
+      mergeJobUpdate(payload.job)
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Clear failed.')
+      setActionMessage(null)
+    } finally {
+      setSavingSteering(false)
+    }
+  }
+
+  async function generateGoalAnchorDraft() {
+    setGeneratingGoalAnchorDraft(true)
+    try {
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ steeringAction: { type: 'build_goal_anchor_draft' } }),
+      })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error ?? 'Draft generation failed.')
+      if (!payload.goalAnchorDraft) {
+        throw new Error('未生成合并草案。')
+      }
+      setError(null)
+      setGoalAnchorGoal(payload.goalAnchorDraft.goal)
+      setGoalAnchorDeliverable(payload.goalAnchorDraft.deliverable)
+      setGoalAnchorDriftGuardText(payload.goalAnchorDraft.driftGuard.join('\n'))
+      setGoalAnchorDirty(true)
+      setGoalAnchorDraftReady(true)
+      setGoalAnchorDraftConsumeIds(payload.consumePendingSteeringIds ?? [])
+      setActionMessage('已生成稳定锚点合并草案，请确认后保存。')
+    } catch (draftError) {
+      setError(draftError instanceof Error ? draftError.message : 'Draft generation failed.')
+      setActionMessage(null)
+    } finally {
+      setGeneratingGoalAnchorDraft(false)
     }
   }
 
@@ -298,14 +384,17 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
             deliverable: goalAnchorDeliverable,
             driftGuard: goalAnchorDriftGuardText.split('\n').map((item) => item.trim()).filter(Boolean),
           },
+          consumePendingSteeringIds: goalAnchorDraftReady ? goalAnchorDraftConsumeIds : [],
         }),
       })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error ?? 'Save failed.')
       setError(null)
       setGoalAnchorDirty(false)
-      setActionMessage('核心目标锚点已保存。后续所有轮次都会受它约束。')
-      setDetail((current) => current ? { ...current, job: { ...current.job, ...payload.job } } : current)
+      const consumedPending = goalAnchorDraftReady && goalAnchorDraftConsumeIds.length > 0
+      resetDraftState()
+      setActionMessage(consumedPending ? '稳定锚点已保存，并已吸收当前这组待生效引导。' : '核心目标锚点已保存。后续所有轮次都会受它约束。')
+      mergeJobUpdate(payload.job)
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Save failed.')
       setActionMessage(null)
@@ -322,7 +411,7 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
       if (!response.ok) throw new Error(payload.error ?? 'Pause failed.')
       setError(null)
       setActionMessage(detail?.job.status === 'running' ? '已请求暂停，当前轮结束后会停下。' : '任务已暂停。')
-      setDetail((current) => current ? { ...current, job: { ...current.job, ...payload.job } } : current)
+      mergeJobUpdate(payload.job)
     } catch (pauseError) {
       setError(pauseError instanceof Error ? pauseError.message : 'Pause failed.')
       setActionMessage(null)
@@ -339,7 +428,7 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
       if (!response.ok) throw new Error(payload.error ?? 'Resume step failed.')
       setError(null)
       setActionMessage('任务将继续一轮，完成后会自动回到暂停。')
-      setDetail((current) => current ? { ...current, job: { ...current.job, ...payload.job } } : current)
+      mergeJobUpdate(payload.job)
     } catch (resumeError) {
       setError(resumeError instanceof Error ? resumeError.message : 'Resume step failed.')
       setActionMessage(null)
@@ -356,7 +445,7 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
       if (!response.ok) throw new Error(payload.error ?? 'Resume auto failed.')
       setError(null)
       setActionMessage('任务已恢复自动运行。')
-      setDetail((current) => current ? { ...current, job: { ...current.job, ...payload.job } } : current)
+      mergeJobUpdate(payload.job)
     } catch (resumeError) {
       setError(resumeError instanceof Error ? resumeError.message : 'Resume auto failed.')
       setActionMessage(null)
@@ -375,9 +464,9 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
       setActionMessage(detail?.job.status === 'running' ? '已请求取消，当前轮结束后会停止。' : '任务已取消。')
       setModelDirty(false)
       setMaxRoundsDirty(false)
-      setSteeringDirty(false)
       setGoalAnchorDirty(false)
-      setDetail((current) => current ? { ...current, job: { ...current.job, ...payload.job } } : current)
+      resetDraftState()
+      mergeJobUpdate(payload.job)
     } catch (cancelError) {
       setError(cancelError instanceof Error ? cancelError.message : 'Cancel failed.')
       setActionMessage(null)
@@ -430,6 +519,7 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
               savingModels,
               savingMaxRounds,
               savingSteering,
+              generatingGoalAnchorDraft,
               savingGoalAnchor,
               retrying,
               cancelling,
@@ -442,16 +532,20 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
             form={{
               taskModel,
               maxRoundsOverrideValue,
-              nextRoundInstruction,
+              pendingSteeringInput,
               goalAnchorGoal,
               goalAnchorDeliverable,
               goalAnchorDriftGuardText,
+              goalAnchorDraftReady,
             }}
             handlers={{
               onRetry: retry,
               onSaveModel: saveModel,
               onSaveMaxRoundsOverride: saveMaxRoundsOverride,
-              onSaveNextRoundInstruction: saveNextRoundInstruction,
+              onAddPendingSteering: addPendingSteering,
+              onRemovePendingSteeringItem: removePendingSteeringItem,
+              onClearPendingSteering: clearPendingSteering,
+              onGenerateGoalAnchorDraft: generateGoalAnchorDraft,
               onSaveGoalAnchor: saveGoalAnchor,
               onPauseTask: pauseTask,
               onResumeStep: resumeStep,
@@ -467,9 +561,8 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
                 setMaxRoundsDirty(true)
                 setMaxRoundsOverrideValue(value)
               },
-              onNextRoundInstructionChange: (value) => {
-                setSteeringDirty(true)
-                setNextRoundInstruction(value)
+              onPendingSteeringInputChange: (value) => {
+                setPendingSteeringInput(value)
               },
               onGoalAnchorGoalChange: (value) => {
                 setGoalAnchorDirty(true)
