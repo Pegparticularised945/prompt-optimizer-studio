@@ -13,8 +13,8 @@
 ### Task 1: Lock Latest Prompt Derivation
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/presentation.test.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/presentation.ts`
+- Modify: `tests/presentation.test.ts`
+- Modify: `src/lib/presentation.ts`
 
 **Step 1: Write the failing test**
 
@@ -37,9 +37,9 @@ Expected: PASS
 ### Task 2: Expose Latest Prompt In Dashboard Job Payload
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/jobs.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/components/dashboard-shell.tsx`
-- Test: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/task-controls.test.ts`
+- Modify: `src/lib/server/jobs.ts`
+- Modify: `src/components/dashboard-shell.tsx`
+- Test: `tests/task-controls.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -62,8 +62,8 @@ Expected: PASS
 ### Task 3: Add Dashboard Card Actions
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/components/dashboard-shell.tsx`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/styles/globals.css`
+- Modify: `src/components/dashboard-shell.tsx`
+- Modify: `src/styles/globals.css`
 
 **Step 1: Keep tests green**
 

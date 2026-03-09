@@ -13,9 +13,9 @@
 ### Task 1: Add Explanation Model And Tests
 
 **Files:**
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/goal-anchor-explanation.ts`
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/goal-anchor-explanation.test.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/types.ts`
+- Create: `src/lib/server/goal-anchor-explanation.ts`
+- Create: `tests/goal-anchor-explanation.test.ts`
+- Modify: `src/lib/server/types.ts`
 
 **Step 1: Write the failing test**
 
@@ -41,12 +41,12 @@ Expected: PASS
 ### Task 2: Generate And Persist Explanation During Job Creation
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/db.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/jobs.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/model-adapter.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/prompting.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/task-controls.test.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/prompting.test.ts`
+- Modify: `src/lib/server/db.ts`
+- Modify: `src/lib/server/jobs.ts`
+- Modify: `src/lib/server/model-adapter.ts`
+- Modify: `src/lib/server/prompting.ts`
+- Modify: `tests/task-controls.test.ts`
+- Modify: `tests/prompting.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -72,8 +72,8 @@ Expected: PASS
 ### Task 3: Render Explanation Card In Job Detail
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/components/job-detail-shell.tsx`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/styles/globals.css`
+- Modify: `src/components/job-detail-shell.tsx`
+- Modify: `src/styles/globals.css`
 
 **Step 1: Keep tests green**
 

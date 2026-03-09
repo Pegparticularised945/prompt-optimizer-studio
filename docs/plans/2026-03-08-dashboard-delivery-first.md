@@ -13,8 +13,8 @@
 ### Task 1: Lock Grouping Rules With Tests
 
 **Files:**
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/dashboard-presentation.test.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/presentation.ts`
+- Create: `tests/dashboard-presentation.test.ts`
+- Modify: `src/lib/presentation.ts`
 
 **Step 1: Write the failing test**
 
@@ -41,8 +41,8 @@ Expected: PASS
 ### Task 2: Rebuild Dashboard Sections
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/components/dashboard-shell.tsx`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/styles/globals.css`
+- Modify: `src/components/dashboard-shell.tsx`
+- Modify: `src/styles/globals.css`
 
 **Step 1: Write the failing test**
 
@@ -80,5 +80,5 @@ Expected: `typecheck`, `test`, and `build` all pass.
 
 **Step 2: Review diff**
 
-Run: `git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio diff -- src tests docs/plans`
+Run: `git diff -- src tests docs/plans`
 Expected: only dashboard grouping and docs changed.

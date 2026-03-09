@@ -13,9 +13,9 @@
 ### Task 1: Add Goal Anchor Model And Tests
 
 **Files:**
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/goal-anchor.ts`
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/goal-anchor.test.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/types.ts`
+- Create: `src/lib/server/goal-anchor.ts`
+- Create: `tests/goal-anchor.test.ts`
+- Modify: `src/lib/server/types.ts`
 
 **Step 1: Write the failing test**
 
@@ -41,9 +41,9 @@ Expected: PASS
 ### Task 2: Persist Goal Anchor On Jobs
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/db.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/jobs.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/task-controls.test.ts`
+- Modify: `src/lib/server/db.ts`
+- Modify: `src/lib/server/jobs.ts`
+- Modify: `tests/task-controls.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -69,11 +69,11 @@ Expected: PASS
 ### Task 3: Inject Goal Anchor Into Optimizer And Reviewer
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/prompting.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/model-adapter.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/engine/optimization-cycle.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/worker.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/prompting.test.ts`
+- Modify: `src/lib/server/prompting.ts`
+- Modify: `src/lib/server/model-adapter.ts`
+- Modify: `src/lib/engine/optimization-cycle.ts`
+- Modify: `src/lib/server/worker.ts`
+- Modify: `tests/prompting.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -99,9 +99,9 @@ Expected: PASS
 ### Task 4: Add Goal Anchor Editor To Job Detail
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/components/job-detail-shell.tsx`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/app/api/jobs/[id]/route.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/styles/globals.css`
+- Modify: `src/components/job-detail-shell.tsx`
+- Modify: `src/app/api/jobs/[id]/route.ts`
+- Modify: `src/styles/globals.css`
 
 **Step 1: Keep tests green**
 

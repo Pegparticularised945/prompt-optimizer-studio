@@ -13,10 +13,10 @@
 ### Task 1: Persist Next-Round Steering
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/types.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/db.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/jobs.ts`
-- Test: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/task-controls.test.ts`
+- Modify: `src/lib/server/types.ts`
+- Modify: `src/lib/server/db.ts`
+- Modify: `src/lib/server/jobs.ts`
+- Test: `tests/task-controls.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -42,9 +42,9 @@ Expected: PASS
 ### Task 2: Feed Steering To Optimizer Only
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/prompting.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/model-adapter.ts`
-- Test: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/prompting.test.ts`
+- Modify: `src/lib/server/prompting.ts`
+- Modify: `src/lib/server/model-adapter.ts`
+- Test: `tests/prompting.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -69,9 +69,9 @@ Expected: PASS
 ### Task 3: Consume Steering Exactly Once
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/jobs.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/worker.ts`
-- Test: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/task-controls.test.ts`
+- Modify: `src/lib/server/jobs.ts`
+- Modify: `src/lib/server/worker.ts`
+- Test: `tests/task-controls.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -97,10 +97,10 @@ Expected: PASS
 ### Task 4: Promote Latest Full Prompt In Presentation
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/presentation.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/components/job-detail-shell.tsx`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/styles/globals.css`
-- Test: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/presentation.test.ts`
+- Modify: `src/lib/presentation.ts`
+- Modify: `src/components/job-detail-shell.tsx`
+- Modify: `src/styles/globals.css`
+- Test: `tests/presentation.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -125,9 +125,9 @@ Expected: PASS
 ### Task 5: Add Steering Controls To Job Detail
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/components/job-detail-shell.tsx`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/app/api/jobs/[id]/route.ts`
-- Test: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/task-controls.test.ts`
+- Modify: `src/components/job-detail-shell.tsx`
+- Modify: `src/app/api/jobs/[id]/route.ts`
+- Test: `tests/task-controls.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -164,5 +164,5 @@ Expected: `typecheck`, `test`, and `build` all pass.
 
 **Step 3: Review final diff**
 
-Run: `git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio diff -- src tests docs/plans`
+Run: `git diff -- src tests docs/plans`
 Expected: Only files related to full prompt delivery and next-round steering changed.

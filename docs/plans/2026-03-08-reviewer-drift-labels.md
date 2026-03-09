@@ -13,8 +13,8 @@
 ### Task 1: Extend Review Model And Tests
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/engine/optimization-cycle.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/reviewer-flow.test.ts`
+- Modify: `src/lib/engine/optimization-cycle.ts`
+- Modify: `tests/reviewer-flow.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -39,9 +39,9 @@ Expected: PASS
 ### Task 2: Update Reviewer Prompt And Adapter Parsing
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/prompting.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/model-adapter.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/prompting.test.ts`
+- Modify: `src/lib/server/prompting.ts`
+- Modify: `src/lib/server/model-adapter.ts`
+- Modify: `tests/prompting.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -66,11 +66,11 @@ Expected: PASS
 ### Task 3: Persist And Render Drift Labels
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/db.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/jobs.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/components/job-detail-shell.tsx`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/styles/globals.css`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/task-controls.test.ts`
+- Modify: `src/lib/server/db.ts`
+- Modify: `src/lib/server/jobs.ts`
+- Modify: `src/components/job-detail-shell.tsx`
+- Modify: `src/styles/globals.css`
+- Modify: `tests/task-controls.test.ts`
 
 **Step 1: Write the failing test**
 

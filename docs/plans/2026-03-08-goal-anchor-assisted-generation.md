@@ -13,9 +13,9 @@
 ### Task 1: Add Goal Anchor Generation Prompt
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/prompting.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/model-adapter.ts`
-- Test: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/prompting.test.ts`
+- Modify: `src/lib/server/prompting.ts`
+- Modify: `src/lib/server/model-adapter.ts`
+- Test: `tests/prompting.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -41,8 +41,8 @@ Expected: PASS
 ### Task 2: Use Assisted Generation During Job Creation
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/jobs.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/task-controls.test.ts`
+- Modify: `src/lib/server/jobs.ts`
+- Modify: `tests/task-controls.test.ts`
 
 **Step 1: Write the failing test**
 

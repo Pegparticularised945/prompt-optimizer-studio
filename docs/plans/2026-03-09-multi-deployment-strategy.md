@@ -13,10 +13,10 @@
 ### Task 1: Add A Container-Safe Runtime Contract
 
 **Files:**
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/runtime-env.ts`
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/app/api/health/route.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/constants.ts`
-- Test: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/runtime-env.test.ts`
+- Create: `src/lib/server/runtime-env.ts`
+- Create: `src/app/api/health/route.ts`
+- Modify: `src/lib/server/constants.ts`
+- Test: `tests/runtime-env.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -53,18 +53,18 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio add src/lib/server/runtime-env.ts src/app/api/health/route.ts src/lib/server/constants.ts tests/runtime-env.test.ts
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio commit -m "feat: add deployment runtime contract"
+git add src/lib/server/runtime-env.ts src/app/api/health/route.ts src/lib/server/constants.ts tests/runtime-env.test.ts
+git commit -m "feat: add deployment runtime contract"
 ```
 
 ### Task 2: Package The Current Server Edition For Docker
 
 **Files:**
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/Dockerfile`
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/.dockerignore`
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/docker-compose.yml`
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/.env.example`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/README.md`
+- Create: `Dockerfile`
+- Create: `.dockerignore`
+- Create: `docker-compose.yml`
+- Create: `.env.example`
+- Modify: `README.md`
 - Test: none (Docker smoke verification)
 
 **Step 1: Write the container contract down before coding**
@@ -89,8 +89,8 @@ Implement:
 
 Run:
 ```bash
-docker build -t prompt-optimizer-studio:self-hosted /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio
-docker compose -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio up -d
+docker build -t prompt-optimizer-studio:self-hosted .
+docker compose up -d
 curl http://localhost:3000/api/health
 ```
 
@@ -103,16 +103,16 @@ Expected:
 **Step 4: Commit**
 
 ```bash
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio add Dockerfile .dockerignore docker-compose.yml .env.example README.md
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio commit -m "feat: add docker self-hosted deployment"
+git add Dockerfile .dockerignore docker-compose.yml .env.example README.md
+git commit -m "feat: add docker self-hosted deployment"
 ```
 
 ### Task 3: Polish Self-Hosted Deployment Documentation
 
 **Files:**
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/docs/deployment/docker-self-hosted.md`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/README.md`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/docs/open-source-launch.md`
+- Create: `docs/deployment/docker-self-hosted.md`
+- Modify: `README.md`
+- Modify: `docs/open-source-launch.md`
 - Test: none (docs review + command validation)
 
 **Step 1: Add the missing operator guidance**
@@ -141,20 +141,20 @@ Expected:
 **Step 3: Commit**
 
 ```bash
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio add docs/deployment/docker-self-hosted.md README.md docs/open-source-launch.md
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio commit -m "docs: add docker deployment guide"
+git add docs/deployment/docker-self-hosted.md README.md docs/open-source-launch.md
+git commit -m "docs: add docker deployment guide"
 ```
 
 ### Task 4: Extract Shared Runtime Boundaries For Future Editions
 
 **Files:**
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/runtime/types.ts`
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/runtime/job-store.ts`
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/runtime/task-runner.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/jobs.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/server/worker.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/engine/optimization-cycle.ts`
-- Test: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/task-runner.test.ts`
+- Create: `src/lib/runtime/types.ts`
+- Create: `src/lib/runtime/job-store.ts`
+- Create: `src/lib/runtime/task-runner.ts`
+- Modify: `src/lib/server/jobs.ts`
+- Modify: `src/lib/server/worker.ts`
+- Modify: `src/lib/engine/optimization-cycle.ts`
+- Test: `tests/task-runner.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -185,17 +185,17 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio add src/lib/runtime/types.ts src/lib/runtime/job-store.ts src/lib/runtime/task-runner.ts src/lib/server/jobs.ts src/lib/server/worker.ts src/lib/engine/optimization-cycle.ts tests/task-runner.test.ts
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio commit -m "refactor: extract runtime-neutral task runner"
+git add src/lib/runtime/types.ts src/lib/runtime/job-store.ts src/lib/runtime/task-runner.ts src/lib/server/jobs.ts src/lib/server/worker.ts src/lib/engine/optimization-cycle.ts tests/task-runner.test.ts
+git commit -m "refactor: extract runtime-neutral task runner"
 ```
 
 ### Task 5: Scaffold Browser-Local Storage And Migration Metadata
 
 **Files:**
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/web-local/schema.ts`
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/web-local/indexeddb-store.ts`
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/web-local/import-export.ts`
-- Test: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/web-local-store.test.ts`
+- Create: `src/lib/web-local/schema.ts`
+- Create: `src/lib/web-local/indexeddb-store.ts`
+- Create: `src/lib/web-local/import-export.ts`
+- Test: `tests/web-local-store.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -226,18 +226,18 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio add src/lib/web-local/schema.ts src/lib/web-local/indexeddb-store.ts src/lib/web-local/import-export.ts tests/web-local-store.test.ts
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio commit -m "feat: scaffold web local storage layer"
+git add src/lib/web-local/schema.ts src/lib/web-local/indexeddb-store.ts src/lib/web-local/import-export.ts tests/web-local-store.test.ts
+git commit -m "feat: scaffold web local storage layer"
 ```
 
 ### Task 6: Build A Narrow Web Local MVP Entry Path
 
 **Files:**
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/components/web-local-app.tsx`
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/app/web-local/page.tsx`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/README.md`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/docs/plans/2026-03-09-web-local-edition-design.md`
-- Test: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/web-local-entry.test.ts`
+- Create: `src/components/web-local-app.tsx`
+- Create: `src/app/web-local/page.tsx`
+- Modify: `README.md`
+- Modify: `docs/plans/2026-03-09-web-local-edition-design.md`
+- Test: `tests/web-local-entry.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -263,16 +263,16 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio add src/components/web-local-app.tsx src/app/web-local/page.tsx README.md docs/plans/2026-03-09-web-local-edition-design.md tests/web-local-entry.test.ts
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio commit -m "feat: add experimental web local entry"
+git add src/components/web-local-app.tsx src/app/web-local/page.tsx README.md docs/plans/2026-03-09-web-local-edition-design.md tests/web-local-entry.test.ts
+git commit -m "feat: add experimental web local entry"
 ```
 
 ### Task 7: Add An Optional Local Bridge Compatibility Spike
 
 **Files:**
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/docs/deployment/local-bridge.md`
-- Create: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/web-local/provider-compatibility.ts`
-- Test: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/provider-compatibility.test.ts`
+- Create: `docs/deployment/local-bridge.md`
+- Create: `src/lib/web-local/provider-compatibility.ts`
+- Test: `tests/provider-compatibility.test.ts`
 
 **Step 1: Write the failing test**
 
@@ -298,8 +298,8 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio add docs/deployment/local-bridge.md src/lib/web-local/provider-compatibility.ts tests/provider-compatibility.test.ts
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio commit -m "docs: define local bridge compatibility rules"
+git add docs/deployment/local-bridge.md src/lib/web-local/provider-compatibility.ts tests/provider-compatibility.test.ts
+git commit -m "docs: define local bridge compatibility rules"
 ```
 
 ### Task 8: Full Verification And Release Readiness Review
@@ -329,9 +329,9 @@ Expected: `typecheck`, `test`, and `build` all pass.
 
 Run:
 ```bash
-docker build -t prompt-optimizer-studio:self-hosted /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio
-docker compose -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio up -d
-docker compose -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio ps
+docker build -t prompt-optimizer-studio:self-hosted .
+docker compose up -d
+docker compose ps
 curl http://localhost:3000/api/health
 ```
 
@@ -345,7 +345,7 @@ Expected:
 
 Run:
 ```bash
-git -C /Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio diff -- Dockerfile docker-compose.yml .env.example README.md docs src tests
+git diff -- Dockerfile docker-compose.yml .env.example README.md docs src tests
 ```
 
 Expected: Only deployment, runtime-boundary, and Web Local groundwork files changed.

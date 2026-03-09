@@ -9,7 +9,7 @@ The goal is not to change product semantics. The goal is to remove private-machi
 ## Current Problems
 
 The repository is close to publishable, but still has four release-hardening gaps:
-- prompt pack loading depends on a private local absolute path under `/Users/road/.codex/...`,
+- prompt pack loading depends on a private local absolute path under `a private local path`,
 - an internal handoff file is still present in `docs/`,
 - several planning documents expose local machine paths that are fine for internal use but noisy for public release,
 - common open-source support files are still missing.

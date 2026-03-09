@@ -13,8 +13,8 @@
 ### Task 1: Lock Priority Sorting And Focus Mode
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/tests/dashboard-presentation.test.ts`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/lib/presentation.ts`
+- Modify: `tests/dashboard-presentation.test.ts`
+- Modify: `src/lib/presentation.ts`
 
 **Step 1: Write the failing test**
 
@@ -41,8 +41,8 @@ Expected: PASS
 ### Task 2: Implement Dashboard Toggle And Card Emphasis
 
 **Files:**
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/components/dashboard-shell.tsx`
-- Modify: `/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/src/styles/globals.css`
+- Modify: `src/components/dashboard-shell.tsx`
+- Modify: `src/styles/globals.css`
 
 **Step 1: Keep tests green while refactoring**
 
