@@ -1,0 +1,101 @@
+name: Bug Report
+description: Report a reproducible bug in the self-hosted app, docs, or runtime.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug.
+
+        Please do not paste API keys, tokens, or any other secrets here.
+        If the report is security-sensitive, use `SECURITY.md` instead of a public issue.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      description: Which surface is mainly affected?
+      options:
+        - Control Room / 首页任务控制室
+        - Result Desk / 详情结果台
+        - Config Desk / 配置台
+        - Runtime / worker / queue
+        - Provider connection / model fetch
+        - Docker / deployment
+        - Docs / README
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment mode
+      options:
+        - Local npm run dev / start
+        - Docker self-hosted
+        - Other self-hosted setup
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider mode
+      description: Pick the closest one.
+      options:
+        - OpenAI-compatible
+        - Anthropic official API
+        - Gemini official API
+        - Mixed / multiple providers
+        - Not provider-related
+    validations:
+      required: true
+  - type: input
+    id: model_alias
+    attributes:
+      label: Model alias used
+      description: The task model alias shown in the UI, if relevant.
+      placeholder: gpt-4.1 / claude-sonnet / gemini-2.5-pro
+  - type: input
+    id: base_url_shape
+    attributes:
+      label: Base URL shape
+      description: Share the URL shape only. Do not include secrets.
+      placeholder: https://api.openai.com/v1 / https://api.anthropic.com / proxy gateway
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Please include the smallest reliable reproduction you have.
+      placeholder: |
+        1. Open ...
+        2. Create a task with ...
+        3. Click ...
+        4. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, screenshots, or extra context
+      description: Paste sanitized logs only.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed API keys, tokens, and any other secrets from this report.
+          required: true
+        - label: I checked the README and deployment guide for the intended behavior.
+          required: false

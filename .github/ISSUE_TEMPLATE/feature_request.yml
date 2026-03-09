@@ -1,0 +1,59 @@
+name: Feature Request
+description: Propose a product, UX, runtime, or docs improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea.
+
+        Good requests explain the operator problem first, then the proposed change.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Control Room / 首页任务控制室
+        - Result Desk / 详情结果台
+        - Config Desk / 配置台
+        - Prompt optimization loop
+        - Provider connectivity
+        - Docker / deployment
+        - Docs / README
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What is hard, unclear, missing, or too error-prone today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the smallest change that would solve it.
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints or non-goals
+      description: Mention any constraints that should be preserved.
+      placeholder: |
+        - Keep single visible model alias
+        - Do not expose provider-internal paths
+        - Reviewer should not see steering raw text
+  - type: textarea
+    id: success
+    attributes:
+      label: What would success look like?
+      description: Describe the user-visible outcome.
+  - type: textarea
+    id: context
+    attributes:
+      label: Extra context
+      description: Links, screenshots, competing examples, or related issues.

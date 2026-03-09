@@ -61,58 +61,43 @@ Current UI captured from local demo data generated with `npm run demo:seed`.
 
 `Prompt Optimizer Studio` is a local-first web app for running iterative prompt optimization jobs with explicit operator control.
 
-Instead of showing only patches or diff fragments, it always keeps the **current latest full prompt** as the main output. You can pause a job, add one-time steering for the next round, continue exactly one round, resume automatic execution, or override the max round limit per task.
+It keeps the **latest full prompt** as the main artifact, then gives the operator the controls that matter: pause, add next-round steering, continue exactly one round, resume auto, or override max rounds per task.
 
 ### Why This Exists
 
-Most prompt optimizers fail in one of two ways:
+Most prompt optimizers fail in two familiar ways:
 
-- They optimize automatically but gradually drift away from the original intent.
-- They show internal edits, but not a final prompt you can directly copy and use.
+- they drift away from the original intent
+- they expose internal diffs instead of a final prompt you can directly use
 
-This project is built to solve both problems:
-
-- Keep the **final full prompt** front and center.
-- Keep the operator in control during long-running optimization loops.
-- Keep the reviewer isolated from historical aggregation noise.
-- Keep the optimizer context intentionally small so each round stays on-task.
+This project is built to keep the result copyable and the optimization loop steerable.
 
 ### Core Capabilities
 
-- **Final-prompt-first delivery**
-  - The job detail page always shows the latest complete prompt as the primary artifact.
-- **Human steering between rounds**
-  - Pause a task and inject one-time guidance for the next round.
-- **Goal-anchor drift guard**
-  - Each task maintains a compact goal anchor so optimization does not over-generalize into “safer but wrong” output.
-- **Independent reviewer loop**
-  - The reviewer sees the current candidate and scoring rules, not historical aggregated issue lists.
-- **Slim optimizer context**
-  - The optimizer receives only the current prompt, the latest slim patch, and optional next-round steering.
-- **Run controls that matter**
-  - `Pause`, `Continue One Round`, `Resume Auto`, and per-task `Max Rounds Override` are built into the workflow.
-- **Broad provider compatibility**
-  - Keep the UI on `Base URL` + `API Key` + model alias while the backend auto-selects OpenAI-compatible, Anthropic native, or Gemini native protocols.
-- **Single visible task model alias**
-  - The UI keeps optimizer/reviewer model display simple and task-friendly, without exposing provider-internal route names.
+- **Final full prompt, not patch fragments**
+  - The Result Desk keeps the latest complete prompt as the primary output.
+- **Human steering with explicit run controls**
+  - Pause, inject next-round guidance, continue one round, resume auto, or cap a task with max-round override.
+- **Drift guard with a small optimizer context**
+  - The system keeps a compact `goalAnchor` and sends only the current prompt, slim patch, and current steering batch to the optimizer.
+- **Independent reviewer isolation**
+  - The reviewer sees the current candidate and scoring rules, not historical aggregate issue lists or steering raw text.
+- **Broad provider compatibility without route leakage**
+  - The UI stays on `Base URL` + `API Key` + model alias while the backend selects OpenAI-compatible, Anthropic native, or Gemini native protocols.
 
 ### How It Works
 
-1. Create a task from a raw prompt or an existing draft prompt.
-2. The system derives a compact `goalAnchor` from the prompt.
-3. The optimizer produces a revised **full prompt**, not just a patch.
+1. Create a task from a raw prompt or an existing draft.
+2. The system derives a compact `goalAnchor`.
+3. The optimizer produces a revised **full prompt**.
 4. The reviewer scores the current candidate independently.
-5. The operator can pause, steer, step one round, or resume automatic execution.
-6. The current best full prompt remains copyable at all times.
+5. The operator can pause, steer, step one round, or resume automatic execution while the latest full prompt stays copyable.
 
 ### Product Shape
 
-- **Home page = Control Room**
-  - Prioritizes tasks that need action, active runs, recent results, and discoverable history.
-- **Job detail = Result Desk**
-  - Prioritizes the latest full prompt, then goal understanding, controls, and diagnostics.
-- **Config Desk**
-  - Separates connection, default model behavior, and the small set of runtime controls that actually affect behavior today.
+- **Control Room**: tasks that need action, active runs, recent results, and searchable history.
+- **Result Desk**: the latest full prompt first, then goal understanding, controls, and diagnostics.
+- **Config Desk**: connection setup, model defaults, and the runtime controls that are actually active today.
 
 ### Tech Stack
 
@@ -181,13 +166,12 @@ For the full self-hosted Docker guide, see `docs/deployment/docker-self-hosted.m
 
 The app is configured from the **Config Desk**.
 
-The front-end stays intentionally simple:
+The UI stays intentionally simple:
 
 - `Base URL`
 - `API Key`
 - default task model alias
-- scoring threshold
-- max rounds
+- active runtime controls: `scoreThreshold` and `maxRounds`
 
 The backend infers the wire protocol from `Base URL`, so the UI does not expose provider-specific route details.
 
@@ -205,24 +189,14 @@ Common `Base URL` examples:
 
 For official APIs, `Base URL` can be the provider's own root. It does not need to be a custom proxy path.
 
-The current public Config Desk only exposes the runtime controls that are truly active: `scoreThreshold` and `maxRounds`.
-
 ### Deployment Model
 
 This repository currently ships the **Self-Hosted / Server Edition**.
 
-What that means today:
-
-- Run it locally with `npm run dev` or `npm run start`: data is stored on the machine running the app.
-- Deploy it with Docker via `docker compose up -d`: data is stored in the mounted server-side volume for that deployment, not in each user browser.
-- The self-hosted server runtime remains the broadest compatibility path for OpenAI-compatible Base URLs because requests originate from the server, not a browser sandbox.
-- This release does **not** currently provide an official hosted browser-local edition.
-
-Future direction:
-
-- A planned `Web Local Edition` may offer a hosted frontend with browser-local storage and centralized frontend updates.
-- That future edition is still a design-stage direction, not a shipping feature in the current repo.
-- See `docs/plans/2026-03-09-web-local-edition-design.md`.
+- Local `npm` runs store data on the machine running the app.
+- Docker deployments store data in the mounted server-side volume, not in each user browser.
+- Server-originated requests remain the broadest compatibility path for OpenAI-compatible endpoints.
+- A separate hosted `Web Local Edition` is planned later, but it is not shipped in this repository today.
 
 ### Storage (Current Self-Hosted Edition)
 
@@ -270,16 +244,17 @@ At the task level, the app supports:
   - Yes. Put the provider's official root into `Base URL`, and the backend will choose the right protocol automatically.
 - **Can I intervene during optimization?**
   - Yes. You can pause a task, add next-round steering, continue exactly one round, or resume automatic execution.
+- **Who is this for?**
+  - Teams and individual operators who want iterative prompt refinement without hiding the final usable prompt.
 - **Why use AGPL-3.0?**
-  - Because the project is intended to stay open even when someone modifies it and offers it to others over a network.
+  - Because modified hosted versions should stay source-available to the users who rely on them.
 
 ### Design Principles
 
 - **Control before automation**
-- **Full result before internal diff**
+- **Full prompt before internal diff**
 - **Small context before bloated history**
 - **Operator clarity before provider complexity**
-- **Product UI before debug-tool aesthetics**
 
 ### Current Notes
 
@@ -288,18 +263,10 @@ At the task level, the app supports:
 
 ### Roadmap
 
-- Historical data cleanup for legacy duplicate rounds
-- Future `Web Local Edition` with browser-local persistence and hosted frontend updates
+- Legacy duplicate-round cleanup
+- Future `Web Local Edition`
 - Better prompt-pack management
-- Richer result comparison views
-- Safer import/export for prompt jobs
-
-### Who This Is For
-
-- prompt engineers who want operator control
-- product builders who need copy-ready final prompts
-- local tool users who prefer UI-managed model routing
-- teams who want iterative refinement without hidden prompt drift
+- Richer result comparison and safer import/export
 
 ### Project Status
 
@@ -326,58 +293,43 @@ This project is released under the `AGPL-3.0-only` License. In plain language:
 
 `Prompt Optimizer Studio` 是一个本地优先的提示词优化工作台，用来运行可控的多轮优化任务。
 
-它不是只展示 patch 或 diff 片段，而是始终把**当前最新完整提示词**放在第一位。你可以中途暂停任务、插入“下一轮人工引导”、只继续一轮、恢复自动运行，或者对单个任务覆盖最大轮数。
+它把**当前最新完整提示词**作为主交付物，然后给操作者保留真正关键的控制能力：暂停、补充下一轮引导、只继续一轮、恢复自动运行，以及按任务覆盖最大轮数。
 
 ### 为什么要做它
 
 大多数 prompt optimizer 最后会出两个典型问题：
 
-- 自动优化越跑越偏，逐渐背离最初意图。
-- 只展示内部修改过程，却不给你一个可以直接复制使用的最终提示词。
+- 自动优化越跑越偏，逐渐背离最初意图
+- 只暴露内部 diff，却不给你一个可以直接复制使用的最终提示词
 
-这个项目就是为了解决这两个问题：
-
-- 让**最终完整提示词**始终是主交付物。
-- 让操作者在长链路优化过程中始终保有控制权。
-- 让 reviewer 不被历史聚合问题污染。
-- 让 optimizer 只吃最小必要上下文，减少越迭代越跑偏的风险。
+这个项目就是为了解决这两件事：既保证结果可直接使用，也保证优化过程可人工纠偏。
 
 ### 核心能力
 
-- **最终完整提示词优先**
-  - 详情页首先展示可直接复制的最新完整 prompt。
-- **支持中途人工引导**
-  - 可以先暂停，再给下一轮补一句明确引导。
-- **目标锚点防漂移**
-  - 每个任务都有一个紧凑的 `goalAnchor`，防止优化过程退化成“更安全但不再正确”的版本。
-- **reviewer 独立复核**
-  - reviewer 只看当前候选稿和评分规则，不看历史聚合问题列表。
-- **optimizer 轻上下文**
-  - optimizer 只接收当前 prompt、最新精简 patch，以及可选的下一轮人工引导。
-- **关键运行控制完整**
-  - 工作流内置 `暂停`、`继续一轮`、`恢复自动运行`、任务级 `最大轮数覆盖`。
-- **多 provider 接入兼容**
-  - 前台始终只填 `Base URL`、`API Key` 和模型别名，后端会自动选择 OpenAI-compatible、Anthropic 原生或 Gemini 原生协议。
-- **对用户只保留单一任务模型别名**
-  - optimizer / reviewer 的模型展示保持简洁，不向用户暴露 provider 内部路径或底层路由名字。
+- **最终完整提示词优先，而不是只给 patch**
+  - 结果台始终把最新完整 prompt 放在第一位。
+- **人工引导配合明确运行控制**
+  - 你可以暂停、补充下一轮引导、继续一轮、恢复自动运行，或覆盖任务最大轮数。
+- **目标防漂移，同时保持 optimizer 轻上下文**
+  - 系统通过紧凑的 `goalAnchor` 约束方向，并且只把当前 prompt、精简 patch、当前引导批次交给 optimizer。
+- **reviewer 隔离清晰**
+  - reviewer 只看当前候选稿和评分规则，不看历史聚合问题，也看不到人工引导原文。
+- **多协议接入，但不暴露底层路由细节**
+  - 前台始终是 `Base URL` + `API Key` + 模型别名，后端自动选择 OpenAI-compatible、Anthropic 原生或 Gemini 原生协议。
 
 ### 工作方式
 
 1. 从原始提示词或已有草稿创建任务。
-2. 系统先从原始 prompt 提炼一个紧凑的 `goalAnchor`。
-3. optimizer 输出的是新的**完整提示词**，而不是只给 patch。
+2. 系统先提炼一个紧凑的 `goalAnchor`。
+3. optimizer 输出新的**完整提示词**。
 4. reviewer 独立对当前候选稿打分和复核。
-5. 操作者可以暂停、插入引导、只推进一轮，或恢复自动运行。
-6. 当前最好版本的完整 prompt 始终可复制。
+5. 操作者可以暂停、插入引导、只推进一轮，或恢复自动运行，同时始终保留可复制的最新完整 prompt。
 
 ### 产品结构
 
-- **首页 = 任务控制室**
-  - 优先展示需要你处理的任务、自动运行中的任务、最新结果，以及更容易发现的历史任务。
-- **详情页 = 结果台**
-  - 先看最新完整提示词，再看目标理解、控制区和诊断区。
-- **配置台**
-  - 把连接、默认模型和当前真正生效的运行控制拆开管理。
+- **任务控制室**：需要你处理的任务、自动运行中的任务、最新结果与可搜索的历史任务。
+- **结果台**：先看最新完整提示词，再看目标理解、控制区和诊断区。
+- **配置台**：连接配置、模型默认值，以及当前真正生效的运行控制。
 
 ### 技术栈
 
@@ -451,8 +403,7 @@ Docker 默认会把 SQLite 数据库存到容器内的 `/app/data/prompt-optimiz
 - `Base URL`
 - `API Key`
 - 默认任务模型别名
-- 分数阈值
-- 最大轮数
+- 当前实际生效的运行项：`scoreThreshold` 与 `maxRounds`
 
 后端会根据 `Base URL` 自动判断底层协议，因此前台不会暴露 provider 专用路径。
 
@@ -470,24 +421,14 @@ Docker 默认会把 SQLite 数据库存到容器内的 `/app/data/prompt-optimiz
 
 如果你接的是官方 API，`Base URL` 直接填写官方根地址即可，不需要额外自建代理路径。
 
-当前公开配置台只保留真正会影响行为的运行项：`scoreThreshold` 和 `maxRounds`。
-
 ### 发布形态
 
 当前这个仓库发布的是 **Self-Hosted / Server Edition（自托管服务端版）**。
 
-这意味着：
-
-- 你可以直接用 `npm run dev` / `npm run start` 在本机运行，数据保存在运行这套应用的机器上。
-- 也可以用 `docker compose up -d` 做自托管部署，数据保存在容器挂载的服务端卷里，而不是每个用户自己的浏览器里。
-- 自托管服务端运行时仍然是兼容任意 OpenAI-compatible Base URL 的最佳路径，因为请求由服务端发出，不受浏览器沙箱限制。
-- 当前仓库版本**并不等于**“官方在线版 + 浏览器本地存储版”。
-
-未来方向：
-
-- 计划中的 `Web Local Edition` 会是另一种产品形态：线上访问，但数据保存在用户浏览器本地，同时前端更新可以统一下发。
-- 这个方向目前还只是设计方案，不是当前仓库已经交付的功能。
-- 设计文档见 `docs/plans/2026-03-09-web-local-edition-design.md`。
+- 本地 `npm` 运行时，数据保存在运行应用的机器上。
+- Docker 自托管时，数据保存在服务端挂载卷中，而不是每个用户自己的浏览器里。
+- 由服务端发起请求，仍然是兼容 OpenAI-compatible Base URL 最广的一种形态。
+- `Web Local Edition` 会作为另一种独立产品形态后续推进，但当前仓库并未交付它。
 
 ### 数据存储（当前自托管版）
 
@@ -535,36 +476,29 @@ Docker Compose 默认会把数据库放在：
   - 可以。把官方根地址直接填进 `Base URL` 即可，后端会自动选择对应协议。
 - **优化过程中可以人工干预吗？**
   - 可以。你可以暂停任务、补充下一轮人工引导、只继续一轮，或者恢复自动运行。
+- **适合谁使用？**
+  - 适合那些想做多轮提示词优化、但又不想失去人工控制权的个人和团队。
 - **为什么改用 AGPL-3.0？**
   - 因为这个项目希望即使被别人改成在线服务继续对外提供，也要保持对应修改源码可获得。
 
 ### 设计原则
 
 - **控制优先于自动化**
-- **完整结果优先于内部 diff**
+- **完整提示词优先于内部 diff**
 - **轻上下文优先于长历史回灌**
 - **用户可理解优先于 provider 复杂度暴露**
-- **产品化界面优先于调试工具式界面**
 
 ### 当前说明
 
-- 新版本已经加入 worker 租约修复，避免同一个运行中任务被重复 claim，进而重复写入相同轮号。
-- 如果旧的本地数据库里已经残留了修复前产生的重复轮号，这些历史记录仍可能继续显示，直到后续做一次数据清洗。
+- 新版本已经加入 worker 租约修复，避免同一个运行中任务被重复 claim。
+- 如果旧的本地数据库里已经残留了修复前产生的重复轮号，这些历史记录仍可能继续显示，直到后续完成数据清洗。
 
 ### 路线图
 
 - 清理历史遗留的重复轮号数据
-- 未来 `Web Local Edition`：浏览器本地存储 + 托管前端更新
+- 未来 `Web Local Edition`
 - 更好的 prompt pack 管理能力
-- 更丰富的结果对比视图
-- 更安全的任务导入导出能力
-
-### 适合谁
-
-- 想保留人工控制权的 prompt engineer
-- 需要“最终可复制提示词”而不是 diff 的产品/应用开发者
-- 偏好通过 UI 配置模型接入的本地工具用户
-- 希望多轮优化但又不想悄悄偏题的团队
+- 更丰富的结果对比与更安全的导入导出
 
 ### 项目状态
 
