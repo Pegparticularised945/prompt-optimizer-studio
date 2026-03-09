@@ -3,11 +3,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { getDb } from '@/lib/server/db'
-import { PROMPT_SKILL_DIR } from '@/lib/server/constants'
+import { resolvePromptPackDir } from '@/lib/server/constants'
 import type { PromptPackVersion } from '@/lib/server/types'
 
 export function ensurePromptPackVersion(): PromptPackVersion {
-  const pack = readPromptPack()
+  const pack = readPromptPackArtifacts()
   const hash = createHash('sha256')
     .update(pack.skillMd)
     .update(pack.rubricMd)
@@ -55,10 +55,10 @@ export function getPromptPackVersion(id: string) {
   return mapPromptPackRow(row)
 }
 
-function readPromptPack() {
-  const skillMd = fs.readFileSync(path.join(PROMPT_SKILL_DIR, 'SKILL.md'), 'utf8')
-  const rubricMd = fs.readFileSync(path.join(PROMPT_SKILL_DIR, 'references', 'rubric.md'), 'utf8')
-  const templateMd = fs.readFileSync(path.join(PROMPT_SKILL_DIR, 'references', 'universal-template.md'), 'utf8')
+export function readPromptPackArtifacts(packDir = resolvePromptPackDir()) {
+  const skillMd = fs.readFileSync(path.join(packDir, 'SKILL.md'), 'utf8')
+  const rubricMd = fs.readFileSync(path.join(packDir, 'references', 'rubric.md'), 'utf8')
+  const templateMd = fs.readFileSync(path.join(packDir, 'references', 'universal-template.md'), 'utf8')
   return { skillMd, rubricMd, templateMd }
 }
 
