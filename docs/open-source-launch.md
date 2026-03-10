@@ -12,7 +12,7 @@ This file keeps copy-ready text for the GitHub repository page and public releas
 
 ### GitHub About
 
-Automated prompt optimization pipeline with human steering, copy-ready final prompts, and self-hosted multi-provider connectivity.
+Automated prompt optimization pipeline with human steering and copy-ready final prompts.
 
 ### Short Pitch
 
