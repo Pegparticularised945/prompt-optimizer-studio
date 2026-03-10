@@ -15,9 +15,9 @@ body:
     attributes:
       label: Area
       options:
-        - Control Room / 首页任务控制室
-        - Result Desk / 详情结果台
-        - Config Desk / 配置台
+        - Control Room
+        - Result Desk
+        - Config Desk
         - Prompt optimization loop
         - Provider connectivity
         - Docker / deployment

@@ -1,5 +1,7 @@
 # Code of Conduct
 
+**English** | [Chinese](CODE_OF_CONDUCT_ZH.md)
+
 ## Our Standard
 
 We want Prompt Optimizer Studio to be a respectful, technically serious, and welcoming open-source project.

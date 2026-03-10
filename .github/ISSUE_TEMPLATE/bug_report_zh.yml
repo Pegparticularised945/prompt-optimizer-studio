@@ -1,0 +1,101 @@
+name: 缺陷反馈
+description: 提交一个可以稳定复现的 bug，适用于自托管应用、文档或运行流程。
+title: "[缺陷]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈问题。
+
+        请不要在这里粘贴 API Key、Token 或其他敏感信息。
+        如果问题涉及安全，请不要公开提交，优先查看 `SECURITY_ZH.md`。
+  - type: dropdown
+    id: area
+    attributes:
+      label: 影响区域
+      description: 这个问题主要影响哪里？
+      options:
+        - 首页任务控制室
+        - 详情结果台
+        - 配置台
+        - 运行时 / worker / queue
+        - Provider 连接 / 模型拉取
+        - Docker / 部署
+        - 文档 / README
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: 部署方式
+      options:
+        - 本地 npm run dev / start
+        - Docker 自托管
+        - 其他自托管方式
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider 模式
+      description: 选择最接近的一项。
+      options:
+        - OpenAI-compatible
+        - Anthropic 官方 API
+        - Gemini 官方 API
+        - 混合 / 多个 provider
+        - 与 provider 无关
+    validations:
+      required: true
+  - type: input
+    id: model_alias
+    attributes:
+      label: 使用的模型别名
+      description: 如果相关，请填写 UI 里看到的任务模型名。
+      placeholder: gpt-4.1 / claude-sonnet / gemini-2.5-pro
+  - type: input
+    id: base_url_shape
+    attributes:
+      label: Base URL 形态
+      description: 只写 URL 形态，不要包含密钥。
+      placeholder: https://api.openai.com/v1 / https://api.anthropic.com / proxy gateway
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请尽量提供最小且稳定的复现方式。
+      placeholder: |
+        1. 打开 ...
+        2. 创建一个任务，配置为 ...
+        3. 点击 ...
+        4. 观察 ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 日志、截图或补充信息
+      description: 如果要贴日志，请先做脱敏。
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已经移除了 API Key、Token 和其他敏感信息。
+          required: true
+        - label: 我已经先查看了 README 和部署文档里的预期行为。
+          required: false

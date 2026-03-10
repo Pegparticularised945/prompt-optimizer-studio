@@ -1,144 +1,56 @@
 # Open Source Launch Copy
 
-This file keeps copy-ready text for the GitHub repository page and the first public release.
+**English** | [Chinese](open-source-launch_ZH.md)
+
+This file keeps copy-ready text for the GitHub repository page and public release materials.
 
 ## Repository Name
 
 `prompt-optimizer-studio`
 
-## Current Release Positioning
+## Positioning
 
-### English
+### GitHub About
 
-The current repository ships the **Self-Hosted / Server Edition**.
+Automated prompt optimization pipeline with human steering, copy-ready final prompts, and self-hosted multi-provider connectivity.
 
-That means:
-- run it locally: data is stored on the machine running the app
-- deploy it to your own server or with Docker: data is stored on that deployment environment or mounted volume
-- the current release is **not** yet an official hosted browser-local edition
+### Short Pitch
 
-A future `Web Local Edition` is planned as a separate product shape:
-- hosted frontend
-- centralized frontend updates
-- browser-local user data
+Prompt Optimizer Studio turns prompt refinement into an operator-friendly pipeline. Start from a draft prompt, let optimizer and reviewer iterate automatically, step in when the direction drifts, and end with a full prompt you can actually ship.
 
-### 中文
+## Key Messages
 
-当前仓库发布的是 **Self-Hosted / Server Edition（自托管服务端版）**。
-
-这意味着：
-- 本地运行时，数据保存在运行应用的本机上
-- 部署到你自己的服务器或 Docker 环境时，数据保存在那台部署环境或挂载卷上
-- 当前版本**还不是**“官方在线版 + 浏览器本地存储版”
-
-未来计划中的 `Web Local Edition` 会作为另一种独立产品形态出现：
-- 前端可在线托管
-- 前端更新可统一下发
-- 用户数据保存在浏览器本地
-
-
-## License Positioning
-
-### English
-
-This repository is licensed under `AGPL-3.0-only`.
-
-Plain-language intent:
-- you can use, modify, and self-host it
-- if you modify it and provide it to other users over a network, you must provide the corresponding source code to those users as well
-
-### 中文
-
-当前仓库采用 `AGPL-3.0-only` 开源。
-
-用人话解释：
-- 你可以使用、修改并自托管它
-- 但如果你修改后把它作为在线服务提供给其他用户使用，也需要向这些用户提供对应源码
-
-## GitHub About
-
-### English
-
-Self-hosted, Docker-ready, local-first prompt optimization studio with copy-ready full prompts, human steering between rounds, and broad Base URL / API Key connectivity.
-
-### 中文
-
-一个自托管、支持 Docker、本地优先的提示词优化工作台：支持暂停/恢复、继续一轮、人工引导，并通过统一的 Base URL / API Key 接入多种模型协议。
-
-## Repository Short Pitch
-
-### English
-
-Prompt Optimizer Studio is built for people who want iterative prompt optimization without losing control. The current repo ships a Docker-ready self-hosted server edition, keeps the latest full prompt front and center, lets operators pause and inject one-time steering between rounds, and supports OpenAI-compatible endpoints plus Anthropic and Gemini official APIs without exposing provider-internal paths in the UI.
-
-### 中文
-
-Prompt Optimizer Studio 面向那些想做多轮提示词优化、但又不想失去控制权的人。当前仓库交付的是一个支持 Docker 的自托管服务端版：它把最新完整提示词始终放在最前面，支持中途暂停并插入一次性的下一轮人工引导，同时兼容 OpenAI-compatible 接口以及 Anthropic / Gemini 官方 API，并且不会在 UI 中暴露 provider 内部路径。
-
-## Suggested Topics
-
-`prompt-engineering`, `prompt-optimizer`, `nextjs`, `react`, `typescript`, `sqlite`, `docker`, `openai-compatible`, `anthropic`, `gemini`, `local-first`, `self-hosted`, `developer-tools`, `ai-tooling`
+- automated, multi-round, pipeline-style prompt optimization
+- human steering stays inside the loop instead of outside it
+- the final deliverable is the latest full prompt, not a diff log
+- round history, drift checks, and stop rules stay visible
+- self-hosted deployment with local SQLite and Docker support
 
 ## Release Title
 
-`v0.1.0 - Self-Hosted Control Room`
+`v0.1.0 - Self-Hosted Prompt Optimization Pipeline`
 
 ## Release Notes
 
-### English
-
-Prompt Optimizer Studio is now ready for its first public release.
+Prompt Optimizer Studio is ready for its first public release.
 
 Release shape:
+
 - This release is the **Self-Hosted / Server Edition**.
 - Data is stored on the machine or deployment environment running the app.
-- A separate `Web Local Edition` is planned for the future, but it is not part of this release.
+- A separate `Web Local Edition` may come later, but it is not part of this release.
 
 Highlights:
-- Final-prompt-first workflow: the latest full prompt stays copyable and visible at all times.
-- Human steering loop: pause a task, add one-time guidance, continue one round, or resume auto.
+
+- Automated prompt optimization pipeline: the app keeps iterating round by round instead of stopping at a single rewrite.
+- Final-prompt-first workflow: the latest full prompt stays visible and copyable at all times.
+- Human steering loop: pause a task, add next-round guidance, continue one round, or resume auto.
 - Goal-anchor drift guard: keep optimization aligned with the original task intent.
-- Reviewer isolation: the reviewer only sees the current candidate and scoring rules, not historical aggregate issue lists.
-- Multi-provider connectivity: configure your Base URL, API key, and model alias from the Config Desk, while the backend routes to OpenAI-compatible, Anthropic native, or Gemini native protocols.
+- Reviewer isolation: the reviewer sees the current candidate and scoring rules, not historical aggregate issue lists or steering raw text.
+- Multi-provider connectivity: configure `Base URL`, `API Key`, and model alias from the Config Desk while the backend routes to OpenAI-compatible, Anthropic native, or Gemini native protocols.
 - Docker-ready self-hosting: ship with a Dockerfile, Compose path, persistent volume convention, and `/api/health` endpoint.
 - AGPL-3.0-only license: modified hosted versions must make their corresponding source available to users.
-- Control-room UI: redesigned the Control Room, Result Desk, and Config Desk with a cleaner operator-first layout.
-- Worker lease fix: prevents the same running job from being claimed multiple times.
 
-Known note:
-- If an older local database already contains duplicate round numbers produced before the worker-lease fix, those historical rows can still appear until cleaned up.
+## Suggested Topics
 
-### 中文
-
-Prompt Optimizer Studio 现在已经可以作为首个公开版本发布。
-
-本次发布形态：
-- 当前版本是 **Self-Hosted / Server Edition（自托管服务端版）**。
-- 数据保存在运行这套应用的机器或部署环境上。
-- 未来会单独规划 `Web Local Edition`，但它不属于这次发布内容。
-
-本次发布重点：
-- 最终完整提示词优先：当前最新完整 prompt 始终可见、可复制。
-- 人工控制闭环：支持暂停任务、补充一次性下一轮引导、继续一轮、恢复自动运行。
-- 目标锚点防漂移：尽量让多轮优化持续贴合原始任务意图。
-- reviewer 隔离：reviewer 只看当前候选稿和评分规则，不看历史聚合问题列表。
-- 多协议模型接入：可在配置台统一填写 Base URL、API Key 和模型别名，后端会自动路由到 OpenAI-compatible、Anthropic 原生或 Gemini 原生协议。
-- Docker 自托管就绪：内置 Dockerfile、Compose 路径、持久化卷约定，以及 `/api/health` 健康检查。
-- `AGPL-3.0-only` 协议：如果你修改后继续拿去做在线服务，对应源码也必须向用户提供。
-- 控制室式 UI：任务控制室、结果台、配置台都改成了更适合操作的产品化结构。
-- worker 租约修复：避免同一个运行中任务被重复 claim。
-
-已知说明：
-- 如果本地旧数据库里还保留着修复前产生的重复轮号数据，这些历史轮次在清洗前仍可能继续显示。
-
-## Social Preview Direction
-
-### English
-
-A self-hosted prompt optimizer that does not hide the result behind diffs.
-Pause it, steer it, and copy the latest full prompt at any time.
-
-### 中文
-
-不是只给你 diff 的自托管 prompt optimizer。
-你可以暂停它、引导它，并在任意时刻直接复制最新完整提示词。
+`prompt-engineering`, `prompt-optimizer`, `automation`, `prompt-pipeline`, `nextjs`, `react`, `typescript`, `sqlite`, `docker`, `openai-compatible`, `anthropic`, `gemini`, `local-first`, `self-hosted`, `developer-tools`, `ai-tooling`

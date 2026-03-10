@@ -17,9 +17,9 @@ body:
       label: Affected area
       description: Which surface is mainly affected?
       options:
-        - Control Room / 首页任务控制室
-        - Result Desk / 详情结果台
-        - Config Desk / 配置台
+        - Control Room
+        - Result Desk
+        - Config Desk
         - Runtime / worker / queue
         - Provider connection / model fetch
         - Docker / deployment

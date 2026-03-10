@@ -1,0 +1,59 @@
+name: 功能建议
+description: 提交产品、交互、运行时或文档方面的改进建议。
+title: "[建议]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你的想法。
+
+        好的建议通常会先讲清楚操作者遇到的问题，再说明希望怎么改。
+  - type: dropdown
+    id: area
+    attributes:
+      label: 所属区域
+      options:
+        - 首页任务控制室
+        - 详情结果台
+        - 配置台
+        - 提示词优化循环
+        - Provider 连接能力
+        - Docker / 部署
+        - 文档 / README
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决的问题
+      description: 现在有什么地方难用、不清楚、缺失，或容易出错？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议的改动
+      description: 描述一个尽量小、但能解决问题的改法。
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: 约束或非目标
+      description: 如果有必须保留的前提，请写在这里。
+      placeholder: |
+        - 保持单一可见模型别名
+        - 不要暴露 provider 内部路径
+        - reviewer 不能看到人工引导原文
+  - type: textarea
+    id: success
+    attributes:
+      label: 成功的样子
+      description: 如果做好了，用户能看到什么变化？
+  - type: textarea
+    id: context
+    attributes:
+      label: 补充背景
+      description: 可以放链接、截图、参考产品或相关 issue。
