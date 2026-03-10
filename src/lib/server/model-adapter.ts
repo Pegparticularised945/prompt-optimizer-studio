@@ -36,7 +36,7 @@ export class CpamcModelAdapter implements ModelAdapter {
     return {
       optimizedPrompt: String(payload.optimizedPrompt ?? input.currentPrompt),
       strategy: payload.strategy === 'preserve' ? 'preserve' : 'rebuild',
-      scoreBefore: Number(payload.scoreBefore ?? 0),
+      scoreBefore: normalizeNumericScore(payload.scoreBefore, 0),
       majorChanges: normalizeTextArray(payload.majorChanges),
       mve: normalizeTextValue(payload.mve, 'Run a single-sample judge validation.'),
       deadEndSignals: normalizeTextArray(payload.deadEndSignals),
@@ -58,7 +58,7 @@ export class CpamcModelAdapter implements ModelAdapter {
 
     const payload = await this.requestJson(this.models.judgeModel, system, user, 120_000)
     return {
-      score: Number(payload.score ?? 0),
+      score: normalizeNumericScore(payload.score, 0),
       hasMaterialIssues: Boolean(payload.hasMaterialIssues),
       summary: String(payload.summary ?? ''),
       driftLabels: normalizeTextArray(payload.driftLabels),
@@ -99,6 +99,11 @@ export function normalizeTextArray(value: unknown) {
   return value
     .map((item) => normalizeTextItem(item))
     .filter((item): item is string => Boolean(item))
+}
+
+function normalizeNumericScore(value: unknown, fallback: number) {
+  const candidate = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(candidate) ? candidate : fallback
 }
 
 function normalizeTextValue(value: unknown, fallback: string) {
