@@ -90,6 +90,11 @@ main {
   display: grid;
   gap: 16px;
   padding: 20px;
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  font-size: 0.95rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-xl);
   background:
@@ -1261,6 +1266,8 @@ main {
 
   .studio-sidebar {
     position: static;
+    max-height: none;
+    overflow: visible;
   }
 }
 
