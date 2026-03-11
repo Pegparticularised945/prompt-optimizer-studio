@@ -113,6 +113,10 @@ main {
   gap: 12px;
 }
 
+.sidebar-brand {
+  gap: 4px;
+}
+
 .brand-mark {
   display: inline-flex;
   align-items: center;
@@ -122,6 +126,14 @@ main {
   border-radius: 14px;
   background: rgba(231, 90, 99, 0.12);
   color: var(--accent);
+  overflow: hidden;
+}
+
+.brand-mark-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .sidebar-title,
@@ -169,6 +181,35 @@ main {
 .sidebar-note {
   padding-top: 6px;
   border-top: 1px dashed rgba(74, 56, 40, 0.16);
+}
+
+.language-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.language-button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink);
+  transition:
+    background-color var(--motion-fast) var(--ease-smooth),
+    border-color var(--motion-fast) var(--ease-smooth),
+    transform var(--motion-fast) var(--ease-smooth);
+}
+
+.language-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(231, 90, 99, 0.22);
+}
+
+.language-button.active {
+  background: rgba(231, 90, 99, 0.14);
+  border-color: rgba(231, 90, 99, 0.26);
+  color: var(--accent);
 }
 
 .hero,
@@ -292,6 +333,12 @@ main {
 
 .summary-cluster {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-hero-copy,
+.settings-copy-stack {
+  display: grid;
+  gap: 10px;
 }
 
 .card-header,
@@ -860,6 +907,18 @@ main {
   padding-top: 4px;
 }
 
+.compact-rubric-fold {
+  gap: 12px;
+}
+
+.compact-rubric-fold summary {
+  font-size: 0.96rem;
+}
+
+.compact-rubric-fold .textarea {
+  min-height: 196px;
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -1028,6 +1087,58 @@ main {
 .settings-control-room {
   display: grid;
   gap: 24px;
+}
+
+.settings-hero {
+  gap: 14px;
+}
+
+.settings-hero h1 {
+  font-size: clamp(2rem, 4vw, 3.4rem);
+}
+
+.settings-hero .hero-lead,
+.settings-hero .small {
+  max-width: 72ch;
+}
+
+.settings-connection-strip {
+  gap: 18px;
+}
+
+.settings-connection-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+}
+
+.settings-inline-status {
+  display: grid;
+  gap: 4px;
+  min-width: 180px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(231, 90, 99, 0.18);
+  background: rgba(255, 247, 244, 0.78);
+}
+
+.settings-inline-status strong {
+  font-family: var(--font-display), serif;
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+}
+
+.settings-grid-compact {
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.2fr) minmax(0, 0.85fr);
+  align-items: start;
+}
+
+.settings-panel-compact {
+  height: 100%;
+  align-content: start;
+}
+
+.settings-rubric-panel .textarea {
+  min-height: 320px;
 }
 
 .summary-card {
@@ -1253,6 +1364,7 @@ main {
   .detail-hero-grid,
   .control-room-grid,
   .settings-grid,
+  .settings-connection-grid,
   .understanding-grid,
   .summary-cluster,
   .control-stage-grid,
@@ -1360,6 +1472,10 @@ main {
   color: var(--accent);
 }
 
+.control-tabs-content[data-state="inactive"] {
+  display: none;
+}
+
 .control-tabs-content:focus {
   outline: none;
 }
@@ -1368,17 +1484,29 @@ main {
   display: grid;
   grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.82fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .latest-results-grid > * {
   min-width: 0;
+  height: 100%;
+}
+
+.latest-results-grid .control-lane,
+.latest-results-grid .history-lane {
+  align-content: start;
 }
 
 .latest-results-grid .history-lane {
   max-height: clamp(560px, 72vh, 880px);
+  overflow: hidden;
+}
+
+.latest-results-grid .history-stack {
+  min-height: 0;
   overflow: auto;
   scrollbar-gutter: stable;
+  padding-right: 4px;
 }
 
 .lane-switcher {

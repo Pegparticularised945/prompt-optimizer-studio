@@ -1,16 +1,18 @@
-import type { Route } from 'next'
-import Link from 'next/link'
-import { motion } from 'framer-motion'
+"use client"
+
+import type { Route } from "next"
+import Link from "next/link"
+import { motion } from "framer-motion"
 import {
   Gauge,
-  PanelsTopLeft,
-  RouteIcon,
+  Globe,
   Settings2,
-  Sparkles,
-} from 'lucide-react'
+} from "lucide-react"
+
+import { useI18n, useLocaleText } from "@/lib/i18n"
 
 export function StudioFrame({
-  title,
+  title: _title,
   currentPath,
   children,
 }: {
@@ -18,30 +20,28 @@ export function StudioFrame({
   currentPath: string
   children: React.ReactNode
 }) {
+  const { locale, setLocale } = useI18n()
+  const text = useLocaleText()
+
   const nav = [
-    { href: '/' as Route, label: '任务控制室', icon: <Gauge size={18} /> },
-    { href: '/settings' as Route, label: '配置台', icon: <Settings2 size={18} /> },
+    { href: "/" as Route, label: text("任务控制室", "Job Control Room"), icon: <Gauge size={18} /> },
+    { href: "/settings" as Route, label: text("配置台", "Settings Desk"), icon: <Settings2 size={18} /> },
   ]
 
   return (
     <div className="studio-shell">
       <aside className="studio-sidebar">
         <div className="sidebar-brand">
-          <span className="brand-mark"><Sparkles size={18} /></span>
-          <div>
-            <div className="small">Prompt Optimizer</div>
-            <strong>{title}</strong>
-          </div>
+          <strong>Prompt Optimizer</strong>
         </div>
 
         <div className="sidebar-section">
-          <div className="sidebar-title"><PanelsTopLeft size={16} /> 控制室导航</div>
           <nav className="sidebar-nav">
             {nav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`sidebar-link${currentPath === item.href ? ' active' : ''}`}
+                className={`sidebar-link${currentPath === item.href ? " active" : ""}`}
               >
                 {item.icon}
                 <span>{item.label}</span>
@@ -50,9 +50,26 @@ export function StudioFrame({
           </nav>
         </div>
 
-        <div className="sidebar-section sidebar-note">
-          <div className="sidebar-title"><RouteIcon size={16} /> 使用方式</div>
-          <p className="small">左侧先切换工作模式，右侧再专注当前结果、控制或配置。</p>
+        <div className="sidebar-section sidebar-language">
+          <div className="sidebar-title"><Globe size={16} /> {text("语言", "Language")}</div>
+          <div className="language-toggle" role="group" aria-label={text("切换界面语言", "Switch interface language")}>
+            <button
+              type="button"
+              className={`language-button${locale === "zh-CN" ? " active" : ""}`}
+              onClick={() => setLocale("zh-CN")}
+              aria-pressed={locale === "zh-CN"}
+            >
+              中文
+            </button>
+            <button
+              type="button"
+              className={`language-button${locale === "en" ? " active" : ""}`}
+              onClick={() => setLocale("en")}
+              aria-pressed={locale === "en"}
+            >
+              EN
+            </button>
+          </div>
         </div>
       </aside>
 
