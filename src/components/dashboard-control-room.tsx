@@ -1,6 +1,8 @@
 import type { Route } from 'next'
 import Link from 'next/link'
-import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
+import * as Accordion from '@radix-ui/react-accordion'
+import * as Tabs from '@radix-ui/react-tabs'
+import { motion } from 'framer-motion'
 import {
   Activity,
   AlertTriangle,
@@ -38,7 +40,7 @@ export type DashboardJobView = {
   judgeModel: string
 }
 
-type LaneKey = 'attention' | 'running' | 'recent-completed' | 'history'
+type LaneKey = 'attention' | 'running' | 'recent-completed' | 'queued'
 
 type HistoryGroupView = ReturnType<typeof groupHistoryJobsByTitle<DashboardJobView>>[number]
 
@@ -76,7 +78,7 @@ export function DashboardControlRoom({
   onResumeAuto: (job: DashboardJobView) => Promise<void>
 }) {
   const [historyQuery, setHistoryQuery] = useState('')
-  const [expandedHistoryGroups, setExpandedHistoryGroups] = useState<Record<string, boolean>>({})
+  const [expandedHistoryGroups, setExpandedHistoryGroups] = useState<string[]>([])
 
   const historyGroups = useMemo(() => {
     const normalizedQuery = normalizeTitleQuery(historyQuery)
@@ -86,7 +88,14 @@ export function DashboardControlRoom({
   }, [groups.history, historyQuery])
 
   const lanes = useMemo(() => {
-    const available = [
+    const available: Array<{
+      key: LaneKey
+      title: string
+      description: string
+      icon: React.ReactNode
+      jobs: DashboardJobView[]
+      emptyMessage: string
+    }> = [
       {
         key: 'attention' as const,
         title: '待你处理',
@@ -112,25 +121,35 @@ export function DashboardControlRoom({
         emptyMessage: '最近还没有完成结果。',
       },
       {
-        key: 'history' as const,
-        title: '历史任务',
-        description: '把旧任务按标题归拢，先搜名字，再展开具体运行记录。',
-        icon: <History size={18} />,
-        jobs: groups.history,
-        emptyMessage: '暂无历史任务。',
+        key: 'queued' as const,
+        title: '排队中',
+        description: '已入队但还没进入自动优化。优先保证你能一屏聚焦当前焦点。',
+        icon: <Clock3 size={18} />,
+        jobs: groups.queued,
+        emptyMessage: '当前没有排队中的任务。',
       },
     ]
 
     return actionableOnly
       ? available.filter((item) => item.key === 'attention' || item.key === 'running')
       : available
-  }, [actionableOnly, groups.attention, groups.history, groups.recentCompleted, groups.running])
+  }, [actionableOnly, groups.attention, groups.queued, groups.recentCompleted, groups.running])
 
   const defaultLane = useMemo(() => {
-    const withContent = lanes.find((lane) => (
-      lane.key === 'history' ? historyGroups.length > 0 : lane.jobs.length > 0
-    ))
-    return withContent?.key ?? lanes[0]?.key ?? 'attention'
+    if (lanes.some((lane) => lane.key === 'attention' && lane.jobs.length > 0)) {
+      return 'attention'
+    }
+    if (lanes.some((lane) => lane.key === 'running' && lane.jobs.length > 0)) {
+      return 'running'
+    }
+    if (lanes.some((lane) => lane.key === 'recent-completed' && (lane.jobs.length > 0 || historyGroups.length > 0))) {
+      return 'recent-completed'
+    }
+    if (lanes.some((lane) => lane.key === 'queued' && lane.jobs.length > 0)) {
+      return 'queued'
+    }
+
+    return lanes[0]?.key ?? 'attention'
   }, [historyGroups.length, lanes])
 
   const [activeLane, setActiveLane] = useState<LaneKey>(defaultLane)
@@ -138,8 +157,6 @@ export function DashboardControlRoom({
   useEffect(() => {
     setActiveLane(defaultLane)
   }, [defaultLane])
-
-  const currentLane = lanes.find((lane) => lane.key === activeLane) ?? lanes[0]
 
   return (
     <section className="control-room">
@@ -171,55 +188,64 @@ export function DashboardControlRoom({
       {loading ? <div className="notice">正在读取控制室数据...</div> : null}
 
       <section className="control-board">
-        <div className="lane-switcher" role="tablist" aria-label="控制板视图切换">
-          {lanes.map((lane) => (
-            <button
-              key={lane.key}
-              type="button"
-              className={`lane-chip${activeLane === lane.key ? ' active' : ''}`}
-              onClick={() => setActiveLane(lane.key)}
-            >
-              {lane.icon}
-              <span>{lane.title}</span>
-              <strong>{lane.key === 'history' ? historyGroups.length : lane.jobs.length}</strong>
-            </button>
-          ))}
-        </div>
+        <Tabs.Root value={activeLane} onValueChange={(next) => setActiveLane(next as LaneKey)} className="control-tabs">
+          <Tabs.List className="control-tabs-list" aria-label="控制板视图切换">
+            {lanes.map((lane) => (
+              <Tabs.Trigger
+                key={lane.key}
+                value={lane.key}
+                className="control-tabs-trigger"
+                data-lane={lane.key}
+              >
+                {lane.icon}
+                <span>{lane.title}</span>
+                <strong>{lane.jobs.length}</strong>
+              </Tabs.Trigger>
+            ))}
+          </Tabs.List>
 
-        <LayoutGroup>
-          <AnimatePresence mode="wait">
-            {currentLane ? (
+          {lanes.map((lane) => (
+            <Tabs.Content key={lane.key} value={lane.key} className="control-tabs-content">
               <motion.div
-                key={currentLane.key}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                 className="lane-content"
               >
-                {currentLane.key === 'history' ? (
-                  <HistoryLane
-                    title={currentLane.title}
-                    description={currentLane.description}
-                    icon={currentLane.icon}
-                    groups={historyGroups}
-                    query={historyQuery}
-                    onQueryChange={setHistoryQuery}
-                    expandedGroups={expandedHistoryGroups}
-                    onToggleGroup={(groupKey) => setExpandedHistoryGroups((current) => ({
-                      ...current,
-                      [groupKey]: !current[groupKey],
-                    }))}
-                    emptyMessage={currentLane.emptyMessage}
-                    onCopyPrompt={onCopyPrompt}
-                  />
+                {lane.key === 'recent-completed' ? (
+                  <div className="latest-results-grid">
+                    <DashboardLane
+                      title={lane.title}
+                      description={lane.description}
+                      icon={lane.icon}
+                      jobs={lane.jobs}
+                      emptyMessage={lane.emptyMessage}
+                      actionInFlight={actionInFlight}
+                      onCopyPrompt={onCopyPrompt}
+                      onResumeAuto={onResumeAuto}
+                      onResumeStep={onResumeStep}
+                      compact
+                    />
+                    <HistoryLane
+                      title="历史任务"
+                      description="把旧任务按标题归拢，先搜名字，再展开具体运行记录。"
+                      icon={<History size={18} />}
+                      groups={historyGroups}
+                      query={historyQuery}
+                      onQueryChange={setHistoryQuery}
+                      expandedGroups={expandedHistoryGroups}
+                      onExpandedGroupsChange={setExpandedHistoryGroups}
+                      emptyMessage="暂无历史任务。"
+                      onCopyPrompt={onCopyPrompt}
+                    />
+                  </div>
                 ) : (
                   <DashboardLane
-                    title={currentLane.title}
-                    description={currentLane.description}
-                    icon={currentLane.icon}
-                    jobs={currentLane.jobs}
-                    emptyMessage={currentLane.emptyMessage}
+                    title={lane.title}
+                    description={lane.description}
+                    icon={lane.icon}
+                    jobs={lane.jobs}
+                    emptyMessage={lane.emptyMessage}
                     actionInFlight={actionInFlight}
                     onCopyPrompt={onCopyPrompt}
                     onResumeAuto={onResumeAuto}
@@ -228,27 +254,10 @@ export function DashboardControlRoom({
                   />
                 )}
               </motion.div>
-            ) : null}
-          </AnimatePresence>
-        </LayoutGroup>
+            </Tabs.Content>
+          ))}
+        </Tabs.Root>
       </section>
-
-      {!actionableOnly ? (
-        <div className="control-room-secondary compact-secondary">
-          <DashboardLane
-            title="排队中"
-            description="已入队但还没进入自动优化。放在次层，避免和需要你决策的任务抢注意力。"
-            icon={<Clock3 size={18} />}
-            jobs={groups.queued}
-            emptyMessage="当前没有排队中的任务。"
-            actionInFlight={actionInFlight}
-            onCopyPrompt={onCopyPrompt}
-            onResumeAuto={onResumeAuto}
-            onResumeStep={onResumeStep}
-            compact
-          />
-        </div>
-      ) : null}
     </section>
   )
 }
@@ -310,7 +319,7 @@ function HistoryLane({
   query,
   onQueryChange,
   expandedGroups,
-  onToggleGroup,
+  onExpandedGroupsChange,
   emptyMessage,
   onCopyPrompt,
 }: {
@@ -320,8 +329,8 @@ function HistoryLane({
   groups: HistoryGroupView[]
   query: string
   onQueryChange: (value: string) => void
-  expandedGroups: Record<string, boolean>
-  onToggleGroup: (groupKey: string) => void
+  expandedGroups: string[]
+  onExpandedGroupsChange: (value: string[]) => void
   emptyMessage: string
   onCopyPrompt: (job: DashboardJobView) => Promise<void>
 }) {
@@ -346,15 +355,22 @@ function HistoryLane({
 
       <div className="history-stack">
         {groups.length === 0 ? <div className="notice">{query.trim() ? '没有匹配的历史任务。' : emptyMessage}</div> : null}
-        {groups.map((group) => (
-          <HistoryGroupCard
-            key={group.key}
-            group={group}
-            expanded={Boolean(expandedGroups[group.key])}
-            onToggle={() => onToggleGroup(group.key)}
-            onCopyPrompt={onCopyPrompt}
-          />
-        ))}
+        {groups.length > 0 ? (
+          <Accordion.Root
+            type="multiple"
+            value={expandedGroups}
+            onValueChange={onExpandedGroupsChange}
+            className="history-accordion"
+          >
+            {groups.map((group) => (
+              <HistoryGroupCard
+                key={group.key}
+                group={group}
+                onCopyPrompt={onCopyPrompt}
+              />
+            ))}
+          </Accordion.Root>
+        ) : null}
       </div>
     </section>
   )
@@ -362,13 +378,9 @@ function HistoryLane({
 
 function HistoryGroupCard({
   group,
-  expanded,
-  onToggle,
   onCopyPrompt,
 }: {
   group: HistoryGroupView
-  expanded: boolean
-  onToggle: () => void
   onCopyPrompt: (job: DashboardJobView) => Promise<void>
 }) {
   const latestJob = group.jobs[0]
@@ -377,63 +389,57 @@ function HistoryGroupCard({
   }
 
   return (
-    <motion.article layout className="history-group-card">
-      <button type="button" className="history-group-toggle" onClick={onToggle}>
-        <div className="history-group-summary">
-          <div className="card-topline">
-            <span className={`status ${latestJob.status}`}>{getJobStatusLabel(latestJob.status)}</span>
-            <span className="meta">{group.jobs.length} 次运行</span>
+    <Accordion.Item value={group.key} className="history-group-card">
+      <Accordion.Header className="history-group-header">
+        <Accordion.Trigger type="button" className="history-group-toggle">
+          <div className="history-group-summary">
+            <div className="card-topline">
+              <span className={`status ${latestJob.status}`}>{getJobStatusLabel(latestJob.status)}</span>
+              <span className="meta">{group.jobs.length} 次运行</span>
+            </div>
+            <h3>{group.title}</h3>
+            <p className="prompt-preview">{getPromptPreview(latestJob.latestPrompt, 120)}</p>
+            <div className="card-metrics">
+              <span>最近更新 {formatDate(latestJob.createdAt)}</span>
+              <span>最新最佳 {latestJob.bestAverageScore.toFixed(2)}</span>
+            </div>
           </div>
-          <h3>{group.title}</h3>
-          <p className="prompt-preview">{getPromptPreview(latestJob.latestPrompt, 120)}</p>
-          <div className="card-metrics">
-            <span>最近更新 {formatDate(latestJob.createdAt)}</span>
-            <span>最新最佳 {latestJob.bestAverageScore.toFixed(2)}</span>
-          </div>
-        </div>
-        <span className={`history-group-chevron${expanded ? ' expanded' : ''}`}>
-          <ChevronDown size={18} />
-        </span>
-      </button>
+          <span className="history-group-chevron">
+            <ChevronDown size={18} />
+          </span>
+        </Accordion.Trigger>
+      </Accordion.Header>
 
-      <AnimatePresence initial={false}>
-        {expanded ? (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="history-run-list"
-          >
-            {group.jobs.map((job) => (
-              <div className="history-run-row" key={job.id}>
-                <div className="history-run-copy">
-                  <div className="card-topline">
-                    <span className={`status ${job.status}`}>{getJobStatusLabel(job.status)}</span>
-                    <span className="meta">{formatDate(job.createdAt)}</span>
-                  </div>
-                  <div className="card-metrics compact-metrics">
-                    <span>轮次 {job.currentRound}</span>
-                    <span>最佳均分 {job.bestAverageScore.toFixed(2)}</span>
-                    <span>模型 {job.optimizerModel}</span>
-                  </div>
+      <Accordion.Content className="history-run-list">
+        <div className="history-run-list-inner">
+          {group.jobs.map((job) => (
+            <div className="history-run-row" key={job.id}>
+              <div className="history-run-copy">
+                <div className="card-topline">
+                  <span className={`status ${job.status}`}>{getJobStatusLabel(job.status)}</span>
+                  <span className="meta">{formatDate(job.createdAt)}</span>
                 </div>
-                <div className="inline-actions secondary-actions">
-                  {(job.status === 'completed' || job.status === 'manual_review' || job.status === 'paused') ? (
-                    <button className="button ghost" type="button" onClick={() => void onCopyPrompt(job)}>
-                      <Copy size={16} /> 复制
-                    </button>
-                  ) : null}
-                  <Link href={`/jobs/${job.id}` as Route} className="button ghost">
-                    详情 <ChevronRight size={16} />
-                  </Link>
+                <div className="card-metrics compact-metrics">
+                  <span>轮次 {job.currentRound}</span>
+                  <span>最佳均分 {job.bestAverageScore.toFixed(2)}</span>
+                  <span>模型 {job.optimizerModel}</span>
                 </div>
               </div>
-            ))}
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </motion.article>
+              <div className="inline-actions secondary-actions">
+                {(job.status === 'completed' || job.status === 'manual_review' || job.status === 'paused') ? (
+                  <button className="button ghost" type="button" onClick={() => void onCopyPrompt(job)}>
+                    <Copy size={16} /> 复制
+                  </button>
+                ) : null}
+                <Link href={`/jobs/${job.id}` as Route} className="button ghost">
+                  详情 <ChevronRight size={16} />
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Accordion.Content>
+    </Accordion.Item>
   )
 }
 

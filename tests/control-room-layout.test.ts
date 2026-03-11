@@ -38,6 +38,7 @@ test('dashboard control room prioritizes attention, running, and latest results'
   assert.match(html, /待你处理/)
   assert.match(html, /自动运行中/)
   assert.match(html, /最新结果/)
+  assert.match(html, /排队中/)
   assert.match(html, /历史任务/)
   assert.doesNotMatch(html, /前往设置/)
   assert.doesNotMatch(html, /前往配置台/)
@@ -66,7 +67,7 @@ test('running dashboard cards keep only one detail entry point', () => {
   assert.match(html, /打开详情/)
 })
 
-test('history lane exposes grouped search when history is the active focus', () => {
+test('dashboard defaults to latest results when only history exists', () => {
   const html = renderToStaticMarkup(createElement(DashboardControlRoom, {
     actionableOnly: false,
     loading: false,
@@ -85,6 +86,7 @@ test('history lane exposes grouped search when history is the active focus', () 
     onResumeAuto: async () => {},
   }))
 
+  assert.match(html, /(data-lane="recent-completed"[^>]*data-state="active")|(data-state="active"[^>]*data-lane="recent-completed")/)
   assert.match(html, /搜索标题，例如：老中医/)
   assert.match(html, /1 次运行/)
 })
