@@ -5,6 +5,7 @@ import { ChevronDown, Plus, SendHorizontal } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { DashboardControlRoom } from '@/components/dashboard-control-room'
+import { ModelAliasCombobox } from '@/components/ui/model-alias-combobox'
 import { StudioFrame } from '@/components/studio-frame'
 import { focusDashboardJobs, getJobDisplayError, partitionDashboardJobs } from '@/lib/presentation'
 
@@ -33,8 +34,7 @@ interface DraftJob {
   id: string
   title: string
   rawPrompt: string
-  optimizerModel: string
-  judgeModel: string
+  taskModel: string
 }
 
 interface SettingsPayload {
@@ -44,12 +44,12 @@ interface SettingsPayload {
 }
 
 function createEmptyDraft(defaults?: SettingsPayload): DraftJob {
+  const defaultTaskModel = (defaults?.defaultOptimizerModel || defaults?.defaultJudgeModel || '').trim()
   return {
     id: crypto.randomUUID(),
     title: '',
     rawPrompt: '',
-    optimizerModel: defaults?.defaultOptimizerModel ?? '',
-    judgeModel: defaults?.defaultJudgeModel ?? '',
+    taskModel: defaultTaskModel,
   }
 }
 
@@ -101,7 +101,7 @@ export function DashboardShell() {
           setSettings(nextDefaults)
           setModels(modelsResponse.ok ? modelsPayload.models : [])
           setDrafts((current) => current.map((draft, index) => (
-            index === 0 && !draft.optimizerModel && !draft.judgeModel && !draft.rawPrompt && !draft.title
+            index === 0 && !draft.taskModel && !draft.rawPrompt && !draft.title
               ? createEmptyDraft(nextDefaults)
               : draft
           )))
@@ -151,8 +151,8 @@ export function DashboardShell() {
       .map((draft) => ({
         title: draft.title.trim(),
         rawPrompt: draft.rawPrompt.trim(),
-        optimizerModel: draft.optimizerModel.trim(),
-        judgeModel: draft.judgeModel.trim(),
+        optimizerModel: draft.taskModel.trim(),
+        judgeModel: draft.taskModel.trim(),
       }))
       .filter((draft) => draft.rawPrompt)
 
@@ -293,9 +293,6 @@ export function DashboardShell() {
                   transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                   className="submission-body"
                 >
-                  <datalist id="cpamc-model-aliases">
-                    {models.map((model) => <option key={model.id} value={model.id} />)}
-                  </datalist>
                   <div className="panel-grid">
                     {drafts.map((draft, index) => (
                       <div className="draft-card control-card subdued" key={draft.id}>
@@ -306,14 +303,15 @@ export function DashboardShell() {
                           标题
                           <input className="input" value={draft.title} onChange={(event) => updateDraft(setDrafts, draft.id, 'title', event.target.value)} placeholder="例如：医疗分诊控制台" />
                         </label>
-                        <label className="label">
-                          优化模型别名
-                          <input className="input" list="cpamc-model-aliases" value={draft.optimizerModel} onChange={(event) => updateDraft(setDrafts, draft.id, 'optimizerModel', event.target.value)} placeholder={settings.defaultOptimizerModel || '例如：gpt-5.2'} />
-                        </label>
-                        <label className="label">
-                          裁判模型别名
-                          <input className="input" list="cpamc-model-aliases" value={draft.judgeModel} onChange={(event) => updateDraft(setDrafts, draft.id, 'judgeModel', event.target.value)} placeholder={settings.defaultJudgeModel || '例如：gpt-5.2'} />
-                        </label>
+                        <ModelAliasCombobox
+                          inputId={`draft-${draft.id}-task-model`}
+                          label="任务模型别名（optimizer/reviewer 共用）"
+                          value={draft.taskModel}
+                          options={models}
+                          placeholder={settings.defaultOptimizerModel || settings.defaultJudgeModel || '例如：gpt-5.2'}
+                          disabled={submitting}
+                          onChange={(next) => updateDraft(setDrafts, draft.id, 'taskModel', next)}
+                        />
                         <label className="label">
                           初版提示词
                           <textarea className="textarea" value={draft.rawPrompt} onChange={(event) => updateDraft(setDrafts, draft.id, 'rawPrompt', event.target.value)} placeholder="贴入一句话需求、初版 prompt，或待优化长提示词。" />
