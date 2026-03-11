@@ -736,6 +736,96 @@ main {
   opacity: 0.58;
 }
 
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(36, 28, 25, 0.38);
+  backdrop-filter: blur(6px);
+}
+
+.dialog-content {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 61;
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(520px, calc(100vh - 72px));
+  overflow: auto;
+  border: 1px solid rgba(74, 56, 40, 0.18);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at top left, rgba(231, 90, 99, 0.12), transparent 42%),
+    linear-gradient(145deg, rgba(255, 252, 246, 0.98), rgba(244, 235, 214, 0.94));
+  box-shadow: var(--shadow-strong);
+  padding: 20px;
+}
+
+.dialog-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.dialog-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  border: 1px solid rgba(74, 56, 40, 0.12);
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--warn);
+}
+
+.dialog-icon.danger {
+  color: var(--danger);
+  background: rgba(231, 90, 99, 0.12);
+  border-color: rgba(231, 90, 99, 0.22);
+}
+
+.dialog-copy {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dialog-title {
+  margin: 0;
+  font-family: var(--font-display), serif;
+  letter-spacing: -0.03em;
+  font-size: 1.4rem;
+}
+
+.dialog-description {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.dialog-close {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  border-radius: 14px;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.dialog-actions .button {
+  min-width: 140px;
+}
+
 .anchor-editor-drawer {
   margin-top: 18px;
   border: 1px dashed rgba(72, 50, 27, 0.18);

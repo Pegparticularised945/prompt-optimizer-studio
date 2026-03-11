@@ -273,6 +273,8 @@ test('job detail exposes pending steering cards and goal-anchor merge entry when
   assert.match(html, /查看影响细节/)
   assert.match(html, /reviewer 不会看到这些引导原文/)
   assert.doesNotMatch(html, /待生效引导卡片/)
+  assert.match(html, /取消任务/)
+  assert.match(html, /清空待生效引导/)
 })
 
 test('goal-anchor draft note explains that saving is still required', () => {

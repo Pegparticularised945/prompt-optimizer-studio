@@ -19,6 +19,7 @@ import {
 
 import { JobRoundCard, type RoundCandidateView } from '@/components/job-round-card'
 import { ModelAliasCombobox } from '@/components/ui/model-alias-combobox'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { SteeringItem } from '@/lib/server/types'
 import { getConversationPolicyLabel, getJobDisplayError, getJobStatusLabel } from '@/lib/presentation'
 
@@ -402,8 +403,33 @@ export function JobDetailControlRoom({
                 {canPause ? <button className="button secondary" type="button" onClick={handlers.onPauseTask} disabled={ui.pausing}>{ui.pausing ? '处理中...' : model.status === 'running' ? '暂停（本轮后）' : '暂停'}</button> : null}
               </div>
               <div className="button-row runtime-secondary-actions">
-                {canRestart ? <button className="button ghost" type="button" onClick={handlers.onRetry} disabled={ui.retrying}><RefreshCcw size={16} /> {ui.retrying ? '处理中...' : '重新开始'}</button> : null}
-                {canCancel ? <button className="button danger" type="button" onClick={handlers.onCancelTask} disabled={ui.cancelling}><PauseCircle size={16} /> {ui.cancelling ? '处理中...' : '取消任务'}</button> : null}
+                {canRestart ? (
+                  <ConfirmDialog
+                    title="重新开始？"
+                    description="这会清空当前候选稿与历史轮次，从初版提示词重新跑。"
+                    confirmText="确认重新开始"
+                    disabled={ui.retrying}
+                    onConfirm={handlers.onRetry}
+                  >
+                    <button className="button ghost" type="button" disabled={ui.retrying}>
+                      <RefreshCcw size={16} /> {ui.retrying ? '处理中...' : '重新开始'}
+                    </button>
+                  </ConfirmDialog>
+                ) : null}
+                {canCancel ? (
+                  <ConfirmDialog
+                    title="取消任务？"
+                    description="取消后，本任务会停止继续优化并进入历史记录。"
+                    confirmText="确认取消任务"
+                    tone="danger"
+                    disabled={ui.cancelling}
+                    onConfirm={handlers.onCancelTask}
+                  >
+                    <button className="button danger" type="button" disabled={ui.cancelling}>
+                      <PauseCircle size={16} /> {ui.cancelling ? '处理中...' : '取消任务'}
+                    </button>
+                  </ConfirmDialog>
+                ) : null}
               </div>
             </div>
           </div>
@@ -431,9 +457,18 @@ export function JobDetailControlRoom({
                 </button>
               ) : null}
               {canSteer && hasPendingSteering ? (
-                <button className="button ghost compact" type="button" onClick={handlers.onClearPendingSteering} disabled={ui.savingSteering}>
-                  <Trash2 size={16} /> 清空待生效引导
-                </button>
+                <ConfirmDialog
+                  title="清空待生效引导？"
+                  description="清空后，它们不会进入下一轮，也不会写入长期规则。"
+                  confirmText="确认清空"
+                  tone="danger"
+                  disabled={ui.savingSteering}
+                  onConfirm={handlers.onClearPendingSteering}
+                >
+                  <button className="button ghost compact" type="button" disabled={ui.savingSteering}>
+                    <Trash2 size={16} /> 清空待生效引导
+                  </button>
+                </ConfirmDialog>
               ) : null}
             </div>
             {hasPendingSteering ? (
