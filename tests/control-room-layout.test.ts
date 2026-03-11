@@ -15,6 +15,76 @@ import {
 } from '../src/components/job-detail-control-room'
 import type { RoundCandidateView } from '../src/components/job-round-card'
 import { SettingsControlRoom } from '../src/components/settings-control-room'
+import { StudioFrame } from '../src/components/studio-frame'
+import { I18nProvider } from '../src/lib/i18n'
+
+test('studio frame and control room can render fully in English', () => {
+  const html = renderToStaticMarkup(createElement(I18nProvider, {
+    initialLocale: 'en',
+    children: createElement(StudioFrame, {
+      title: 'Job Control Room',
+      currentPath: '/',
+      children: createElement(DashboardControlRoom, {
+        actionableOnly: false,
+        loading: false,
+        groups: {
+          attention: [makeJob('manual', 'manual_review')],
+          running: [],
+          queued: [],
+          recentCompleted: [],
+          history: [],
+        },
+        stats: { attention: 1, running: 0, queued: 0, recentCompleted: 0, history: 0 },
+        actionInFlight: null,
+        onToggleActionableOnly: () => {},
+        onCopyPrompt: async () => {},
+        onResumeStep: async () => {},
+        onResumeAuto: async () => {},
+      }),
+    }),
+  }))
+
+  assert.match(html, /Job Control Room/)
+  assert.match(html, /Prompt Optimizer/)
+  assert.match(html, /Language/)
+  assert.match(html, /Need your decision/)
+  assert.doesNotMatch(html, /How to use/)
+  assert.doesNotMatch(html, /Navigation/)
+  assert.doesNotMatch(html, /任务控制室/)
+  assert.doesNotMatch(html, /控制室导航/)
+})
+
+test('studio frame keeps logo only in tab/favicon and not inside the sidebar', () => {
+  const html = renderToStaticMarkup(createElement(StudioFrame, {
+    title: '任务控制室',
+    currentPath: '/',
+    children: createElement('div', null, 'body'),
+  }))
+
+  assert.doesNotMatch(html, /src="\/logo\.png"/)
+})
+
+test('studio frame keeps only the product name in the sidebar brand block', () => {
+  const html = renderToStaticMarkup(createElement(StudioFrame, {
+    title: '当前页标题唯一标记',
+    currentPath: '/',
+    children: createElement('div', null, 'body'),
+  }))
+
+  assert.match(html, /Prompt Optimizer/)
+  assert.doesNotMatch(html, /当前页标题唯一标记/)
+  assert.doesNotMatch(html, /控制室导航/)
+})
+
+test('logo assets exist for favicon and GitHub rendering', () => {
+  // Keep this small and explicit: we only want to ensure the assets we reference in
+  // the app and README keep existing as stable paths.
+  const fs = require('node:fs') as typeof import('node:fs')
+  const path = require('node:path') as typeof import('node:path')
+
+  assert.ok(fs.existsSync(path.join(process.cwd(), 'public', 'logo.png')))
+  assert.ok(fs.existsSync(path.join(process.cwd(), 'src', 'app', 'icon.png')))
+})
 
 test('dashboard control room prioritizes attention, running, and latest results', () => {
   const html = renderToStaticMarkup(createElement(DashboardControlRoom, {
@@ -41,8 +111,40 @@ test('dashboard control room prioritizes attention, running, and latest results'
   assert.match(html, /最新结果/)
   assert.match(html, /排队中/)
   assert.match(html, /历史任务/)
+  assert.match(html, /先处理要你决策的任务/)
+  assert.doesNotMatch(html, /class="section-title lane-title"/)
   assert.doesNotMatch(html, /前往设置/)
   assert.doesNotMatch(html, /前往配置台/)
+})
+
+
+test('dashboard control room renders the middle slot between hero and lane tabs', () => {
+  const html = renderToStaticMarkup(createElement(DashboardControlRoom, {
+    actionableOnly: false,
+    loading: false,
+    middleSlot: createElement('div', { 'data-test-slot': 'submission-slot' }, '投递台测试块'),
+    groups: {
+      attention: [makeJob('manual', 'manual_review')],
+      running: [],
+      queued: [],
+      recentCompleted: [],
+      history: [],
+    },
+    stats: { attention: 1, running: 0, queued: 0, recentCompleted: 0, history: 0 },
+    actionInFlight: null,
+    onToggleActionableOnly: () => {},
+    onCopyPrompt: async () => {},
+    onResumeStep: async () => {},
+    onResumeAuto: async () => {},
+  }))
+
+  const heroIndex = html.indexOf('任务控制室')
+  const slotIndex = html.indexOf('投递台测试块')
+  const tabIndex = html.indexOf('data-lane="attention"')
+
+  assert.ok(heroIndex >= 0)
+  assert.ok(slotIndex > heroIndex)
+  assert.ok(tabIndex > slotIndex)
 })
 
 test('running dashboard cards keep only one detail entry point', () => {
@@ -92,6 +194,58 @@ test('dashboard defaults to latest results when only history exists', () => {
   assert.match(html, /1 次运行/)
 })
 
+test('completed dashboard cards keep a single copy action and retain detail entry', () => {
+  const html = renderToStaticMarkup(createElement(DashboardControlRoom, {
+    actionableOnly: false,
+    loading: false,
+    groups: {
+      attention: [],
+      running: [],
+      queued: [],
+      recentCompleted: [makeJob('completed-copy', 'completed')],
+      history: [],
+    },
+    stats: { attention: 0, running: 0, queued: 0, recentCompleted: 1, history: 0 },
+    actionInFlight: null,
+    onToggleActionableOnly: () => {},
+    onCopyPrompt: async () => {},
+    onResumeStep: async () => {},
+    onResumeAuto: async () => {},
+  }))
+
+  assert.match(html, /复制最新提示词/)
+  assert.match(html, />详情</)
+  assert.doesNotMatch(html, />复制</)
+})
+
+test('settings control room keeps Chinese-only rubric label by default', () => {
+  const html = renderToStaticMarkup(createElement(SettingsControlRoom, {
+    form: {
+      cpamcBaseUrl: '',
+      cpamcApiKey: '',
+      apiProtocol: 'auto',
+      defaultTaskModel: '',
+      scoreThreshold: 95,
+      maxRounds: 8,
+      customRubricMd: '',
+    },
+    models: [],
+    loading: false,
+    saving: false,
+    testing: false,
+    loadingModels: false,
+    message: null,
+    error: null,
+    onSave: () => {},
+    onTestConnection: () => {},
+    onRefreshModels: () => {},
+    onFormChange: () => {},
+  }))
+
+  assert.match(html, />评分标准</)
+  assert.doesNotMatch(html, /Rubric/)
+})
+
 test('job detail control room keeps result before goal, controls, and diagnostics', () => {
   const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps()))
 
@@ -102,10 +256,39 @@ test('job detail control room keeps result before goal, controls, and diagnostic
   const controlIndex = html.indexOf('任务控制')
   const diagnosticIndex = html.indexOf('优化过程诊断')
 
+  assert.doesNotMatch(html, /结果优先/)
+  assert.doesNotMatch(html, /目标理解层/)
+  assert.doesNotMatch(html, /辅助判断/)
+  assert.doesNotMatch(html, /操作面板/)
+  assert.doesNotMatch(html, /深入诊断/)
   assert.ok(resultIndex >= 0)
   assert.ok(goalIndex > resultIndex)
   assert.ok(controlIndex > goalIndex)
   assert.ok(diagnosticIndex > controlIndex)
+})
+
+test('job detail control room can render fully in English', () => {
+  const html = renderToStaticMarkup(createElement(I18nProvider, {
+    initialLocale: 'en',
+    children: createElement(JobDetailControlRoom, makeDetailProps()),
+  }))
+
+  assert.match(html, /Return to control room/)
+  assert.match(html, /Settings Desk/)
+  assert.match(html, /Result Desk/)
+  assert.match(html, /Current latest full prompt/)
+  assert.match(html, /Runtime control/)
+  assert.match(html, /Next-round steering/)
+  assert.doesNotMatch(html, /返回控制室/)
+  assert.doesNotMatch(html, /当前最新完整提示词/)
+  assert.doesNotMatch(html, /任务控制/)
+})
+
+test('job detail keeps the task model editor as a searchable combobox', () => {
+  const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps()))
+
+  assert.match(html, /data-ui="model-alias-combobox"/)
+  assert.doesNotMatch(html, /<select[^>]+id="job-task-model"/)
 })
 
 test('job detail exposes manual complete action when paused with candidates', () => {
@@ -162,6 +345,7 @@ test('job detail readonly goal fields use compact scrollable summaries', () => {
       taskModel: 'gpt-5.2',
       maxRoundsOverrideValue: '12',
       pendingSteeringInput: '',
+      customRubricMd: '',
       goalAnchorGoal: '保持原始任务目标',
       goalAnchorDeliverable: '输出完整优化提示词',
       goalAnchorDriftGuardText: '不要偏离目标',
@@ -172,6 +356,7 @@ test('job detail readonly goal fields use compact scrollable summaries', () => {
       onRetry: () => {},
       onSaveModel: () => {},
       onSaveMaxRoundsOverride: () => {},
+      onSaveCustomRubric: () => {},
       onAddPendingSteering: () => {},
       onRemovePendingSteeringItem: () => {},
       onClearPendingSteering: () => {},
@@ -188,6 +373,7 @@ test('job detail readonly goal fields use compact scrollable summaries', () => {
       onTaskModelChange: () => {},
       onMaxRoundsOverrideChange: () => {},
       onPendingSteeringInputChange: () => {},
+      onCustomRubricChange: () => {},
       onGoalAnchorGoalChange: () => {},
       onGoalAnchorDeliverableChange: () => {},
       onGoalAnchorDriftGuardChange: () => {},
@@ -240,6 +426,7 @@ test('job detail exposes pending steering cards and goal-anchor merge entry when
       taskModel: 'gpt-5.2',
       maxRoundsOverrideValue: '12',
       pendingSteeringInput: '',
+      customRubricMd: '',
       goalAnchorGoal: '保持原始任务目标',
       goalAnchorDeliverable: '输出完整优化提示词',
       goalAnchorDriftGuardText: '不要偏离目标',
@@ -250,6 +437,7 @@ test('job detail exposes pending steering cards and goal-anchor merge entry when
       onRetry: () => {},
       onSaveModel: () => {},
       onSaveMaxRoundsOverride: () => {},
+      onSaveCustomRubric: () => {},
       onAddPendingSteering: () => {},
       onRemovePendingSteeringItem: () => {},
       onClearPendingSteering: () => {},
@@ -266,6 +454,7 @@ test('job detail exposes pending steering cards and goal-anchor merge entry when
       onTaskModelChange: () => {},
       onMaxRoundsOverrideChange: () => {},
       onPendingSteeringInputChange: () => {},
+      onCustomRubricChange: () => {},
       onGoalAnchorGoalChange: () => {},
       onGoalAnchorDeliverableChange: () => {},
       onGoalAnchorDriftGuardChange: () => {},
@@ -290,6 +479,23 @@ test('job detail exposes pending steering cards and goal-anchor merge entry when
   assert.doesNotMatch(html, /待生效引导卡片/)
   assert.match(html, /取消任务/)
   assert.match(html, /清空待生效引导/)
+})
+
+test('job detail explanation removes duplicated source labels and keeps task scoring standard compact', () => {
+  const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps({
+    model: {
+      candidates: [makeCandidate('cand-1')],
+      customRubricMd: null,
+    },
+    form: {
+      customRubricMd: '',
+    },
+  })))
+
+  assert.doesNotMatch(html, /原始任务摘要：/)
+  assert.match(html, /单任务评分标准 · 跟随配置台/)
+  assert.doesNotMatch(html, /只影响当前任务；留空则跟随配置台里的全局评分标准。支持 Markdown。/)
+  assert.ok(html.indexOf('完成并归档') < html.indexOf('单任务评分标准 · 跟随配置台'))
 })
 
 test('goal-anchor draft note explains that saving is still required', () => {
@@ -328,6 +534,7 @@ test('goal-anchor draft note explains that saving is still required', () => {
       taskModel: 'gpt-5.2',
       maxRoundsOverrideValue: '12',
       pendingSteeringInput: '',
+      customRubricMd: '',
       goalAnchorGoal: '保持原始任务目标',
       goalAnchorDeliverable: '输出完整优化提示词',
       goalAnchorDriftGuardText: '不要偏离目标\n真实一些。',
@@ -338,6 +545,7 @@ test('goal-anchor draft note explains that saving is still required', () => {
       onRetry: () => {},
       onSaveModel: () => {},
       onSaveMaxRoundsOverride: () => {},
+      onSaveCustomRubric: () => {},
       onAddPendingSteering: () => {},
       onRemovePendingSteeringItem: () => {},
       onClearPendingSteering: () => {},
@@ -354,6 +562,7 @@ test('goal-anchor draft note explains that saving is still required', () => {
       onTaskModelChange: () => {},
       onMaxRoundsOverrideChange: () => {},
       onPendingSteeringInputChange: () => {},
+      onCustomRubricChange: () => {},
       onGoalAnchorGoalChange: () => {},
       onGoalAnchorDeliverableChange: () => {},
       onGoalAnchorDriftGuardChange: () => {},
@@ -375,6 +584,7 @@ test('settings control room groups connection, defaults, and active runtime fiel
       defaultTaskModel: 'gpt-5.2',
       scoreThreshold: 95,
       maxRounds: 8,
+      customRubricMd: '',
     },
     models: [],
     loading: false,
@@ -394,6 +604,7 @@ test('settings control room groups connection, defaults, and active runtime fiel
   assert.match(html, /连接/)
   assert.match(html, /默认模型/)
   assert.match(html, /运行策略/)
+  assert.match(html, /评分标准/)
   assert.match(html, /接口协议/)
   assert.match(html, /自动判断/)
   assert.match(html, /OpenAI-compatible/)
@@ -404,11 +615,50 @@ test('settings control room groups connection, defaults, and active runtime fiel
   assert.match(html, /协议识别/)
   assert.match(html, /Base URL/)
   assert.match(html, /API Key/)
+  assert.match(html, /连接与策略/)
+  assert.equal(countOccurrences(html, '>配置台<'), 1)
+  assert.equal(countOccurrences(html, '>连接<'), 1)
+  assert.equal(countOccurrences(html, '>默认模型<'), 1)
+  assert.ok(html.indexOf('>连接<') < html.indexOf('>默认模型<'))
+  assert.ok(html.indexOf('>默认模型<') < html.indexOf('>评分标准<'))
+  assert.ok(html.indexOf('>评分标准<') < html.indexOf('>运行策略<'))
+  assert.doesNotMatch(html, /接入层/)
+  assert.doesNotMatch(html, /模型策略/)
+  assert.doesNotMatch(html, /评分规则/)
+  assert.doesNotMatch(html, /运行行为/)
   assert.doesNotMatch(html, /裁判数量/)
   assert.doesNotMatch(html, /无提升上限/)
   assert.doesNotMatch(html, /并发数/)
   assert.doesNotMatch(html, /会话策略/)
   assert.doesNotMatch(html, /CPAMC/)
+})
+
+test('settings control room keeps rubric copy Chinese-only in zh view', () => {
+  const html = renderToStaticMarkup(createElement(SettingsControlRoom, {
+    form: {
+      cpamcBaseUrl: 'https://api.openai.com/v1',
+      cpamcApiKey: 'secret',
+      apiProtocol: 'auto',
+      defaultTaskModel: 'gpt-5.2',
+      scoreThreshold: 95,
+      maxRounds: 8,
+      customRubricMd: '',
+    },
+    models: [],
+    loading: false,
+    saving: false,
+    testing: false,
+    loadingModels: false,
+    message: null,
+    error: null,
+    onSave: () => {},
+    onTestConnection: () => {},
+    onRefreshModels: () => {},
+    onFormChange: () => {},
+  }))
+
+  assert.match(html, /评分标准/)
+  assert.doesNotMatch(html, /Rubric/)
 })
 
 test('job detail notices produce stable unique keys for AnimatePresence', () => {
@@ -487,6 +737,7 @@ function makeDetailProps(overrides: {
       taskModel: 'gpt-5.2',
       maxRoundsOverrideValue: '12',
       pendingSteeringInput: '保持结果导向',
+      customRubricMd: '',
       goalAnchorGoal: '保持原始任务目标',
       goalAnchorDeliverable: '输出完整优化提示词',
       goalAnchorDriftGuardText: '不要偏离目标',
@@ -498,6 +749,7 @@ function makeDetailProps(overrides: {
       onRetry: () => {},
       onSaveModel: () => {},
       onSaveMaxRoundsOverride: () => {},
+      onSaveCustomRubric: () => {},
       onAddPendingSteering: () => {},
       onRemovePendingSteeringItem: () => {},
       onClearPendingSteering: () => {},
@@ -514,6 +766,7 @@ function makeDetailProps(overrides: {
       onTaskModelChange: () => {},
       onMaxRoundsOverrideChange: () => {},
       onPendingSteeringInputChange: () => {},
+      onCustomRubricChange: () => {},
       onGoalAnchorGoalChange: () => {},
       onGoalAnchorDeliverableChange: () => {},
       onGoalAnchorDriftGuardChange: () => {},
@@ -550,6 +803,7 @@ function makeDetailModel(): JobDetailViewModel {
     maxRoundsOverride: 12,
     passStreak: 1,
     lastReviewScore: 94,
+    customRubricMd: null,
     errorMessage: null,
     latestFullPrompt: 'LATEST FULL PROMPT',
     initialPrompt: 'INITIAL RAW PROMPT',
@@ -586,4 +840,8 @@ function makeCandidate(id: string): RoundCandidateView {
       },
     ],
   }
+}
+
+function countOccurrences(input: string, needle: string) {
+  return input.split(needle).length - 1
 }
