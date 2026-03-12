@@ -168,7 +168,10 @@ export function SettingsControlRoom({
         <div className="settings-grid settings-grid-compact">
           <div className="settings-secondary-layout" data-ui="settings-secondary-layout">
             <div className="settings-rubric-column" data-ui="settings-rubric-column">
-              <section className="panel settings-panel settings-panel-compact settings-rubric-panel">
+              <section
+                className="panel settings-panel settings-panel-compact settings-rubric-panel"
+                data-ui="settings-rubric-panel"
+              >
                 <div className="section-head">
                   <div className="settings-copy-stack">
                     <h2 className="section-title has-icon">
@@ -205,7 +208,10 @@ export function SettingsControlRoom({
             </div>
 
             <div className="settings-side-column" data-ui="settings-side-column">
-              <section className="panel settings-panel settings-panel-compact">
+              <section
+                className="panel settings-panel settings-panel-compact settings-side-panel"
+                data-ui="settings-side-panel"
+              >
                 <div className="section-head">
                   <div className="settings-copy-stack">
                     <h2 className="section-title has-icon">
@@ -214,7 +220,7 @@ export function SettingsControlRoom({
                       </span>
                       {text("默认模型", "Default model")}
                     </h2>
-                    <p className="small">{text("对外只保留单一模型别名。优化器 / 复核器在任务里共享同一个可见模型名，不暴露 provider 内部路径。", "Keep one visible model alias in the UI. Optimizer and reviewer share that alias in each task, without exposing provider internals.")}</p>
+                    <p className="small">{text("统一默认任务模型。优化器 / 复核器对外共用同一别名。", "Keep one default task model. Optimizer and reviewer share the same visible alias.")}</p>
                   </div>
                 </div>
                 <div className="section-body-stack">
@@ -232,7 +238,10 @@ export function SettingsControlRoom({
                 </div>
               </section>
 
-              <section className="panel settings-panel settings-panel-compact">
+              <section
+                className="panel settings-panel settings-panel-compact settings-side-panel"
+                data-ui="settings-side-panel"
+              >
                 <div className="section-head">
                   <div className="settings-copy-stack">
                     <h2 className="section-title has-icon">
@@ -241,7 +250,7 @@ export function SettingsControlRoom({
                       </span>
                       {text("运行策略", "Runtime policy")}
                     </h2>
-                    <p className="small">{text("这里保留会直接改变运行结果的默认值：同时运行任务数、复核阈值和默认最大轮数。", "Keep the defaults that directly change runtime behavior here: concurrent jobs, score threshold, and the default round cap.")}</p>
+                    <p className="small">{text("只保留 3 个会直接影响结果的默认值：并发、阈值、轮数。", "Keep only the three defaults that directly change outcomes: concurrency, threshold, and round cap.")}</p>
                   </div>
                 </div>
                 <div className="section-body-stack">

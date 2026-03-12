@@ -840,13 +840,9 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .compact-goal-grid {
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  grid-template-columns: 1fr;
   align-items: start;
-}
-
-.compact-goal-grid > :last-child {
-  grid-column: 1 / -1;
 }
 
 .active-goal-card,
@@ -878,12 +874,19 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .active-goal-value {
-  min-height: 86px;
+  min-height: 0;
   overflow-wrap: anywhere;
   padding: 14px 16px;
   border: 1px solid rgba(72, 50, 27, 0.12);
   border-radius: var(--radius-md);
   background: rgba(255, 252, 246, 0.78);
+}
+
+.active-goal-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .goal-value-fold {
@@ -905,18 +908,25 @@ html[data-locale="en"] .detail-hero .eyebrow {
   display: none;
 }
 
-.goal-value-fold .fold-card-summary-row {
-  align-items: center;
+.goal-value-summary-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
 }
 
-.goal-value-fold .fold-card-title {
-  font-size: 0.95rem;
-  line-height: 1.45;
-  text-align: left;
+.goal-value-preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: var(--ink-soft);
+  line-height: 1.55;
 }
 
 .goal-value-fold .fold-card-summary-meta {
   flex-shrink: 0;
+  align-self: center;
   padding-top: 1px;
 }
 
@@ -929,8 +939,8 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .compact-goal-card {
-  gap: 8px;
-  padding: 16px;
+  gap: 10px;
+  padding: 18px;
 }
 
 .understanding-stack {
@@ -1610,15 +1620,17 @@ html[data-locale="en"] .detail-hero .eyebrow {
 
 .settings-secondary-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(280px, 0.82fr);
-  gap: 16px;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  gap: 20px;
   align-items: start;
 }
 
 .settings-rubric-column,
 .settings-side-column {
+  min-width: 0;
   display: grid;
-  gap: 16px;
+  gap: 14px;
   align-content: start;
 }
 
@@ -1635,13 +1647,34 @@ html[data-locale="en"] .detail-hero .eyebrow {
   max-width: 40ch;
 }
 
+.settings-rubric-panel .small {
+  max-width: 44ch;
+}
+
+.settings-side-panel {
+  gap: 14px;
+  padding: 20px;
+}
+
+.settings-side-panel .section-head {
+  gap: 8px;
+}
+
+.settings-side-panel .small {
+  max-width: 32ch;
+}
+
+.settings-side-panel .section-body-stack {
+  gap: 12px;
+}
+
 .settings-inline-actions {
   display: flex;
   justify-content: flex-end;
 }
 
 .settings-rubric-panel .textarea {
-  min-height: 320px;
+  min-height: 360px;
 }
 
 .settings-save-bar {
@@ -1662,6 +1695,7 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .summary-card {
+  --summary-accent: var(--seed);
   display: grid;
   gap: 10px;
   padding: 14px 16px;
@@ -1700,29 +1734,38 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .summary-card.tone-manual_review {
+  --summary-accent: var(--danger);
   border-color: rgba(201, 63, 73, 0.2);
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.78), rgba(255, 246, 244, 0.68));
 }
 
 .summary-card.tone-running {
-  border-color: rgba(231, 90, 99, 0.18);
+  --summary-accent: var(--info);
+  border-color: rgba(74, 157, 124, 0.2);
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.78), rgba(244, 251, 247, 0.68));
 }
 
 .summary-card.tone-completed {
+  --summary-accent: var(--ok);
   border-color: rgba(47, 138, 93, 0.18);
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.78), rgba(243, 250, 245, 0.68));
 }
 
 .summary-card.tone-pending {
-  border-color: rgba(184, 134, 24, 0.18);
+  --summary-accent: #8d6a39;
+  border-color: rgba(141, 106, 57, 0.18);
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.78), rgba(248, 242, 231, 0.72));
 }
 
 .summary-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
+  width: auto;
+  height: auto;
+  flex: 0 0 auto;
+  color: var(--summary-accent);
+  background: transparent;
 }
 
 .control-card,
@@ -2014,6 +2057,10 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .control-tabs-trigger {
+  --lane-accent: var(--accent);
+  --lane-soft-bg: rgba(231, 90, 99, 0.1);
+  --lane-soft-border: rgba(231, 90, 99, 0.24);
+  --lane-focus-ring: rgba(231, 90, 99, 0.16);
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -2027,12 +2074,51 @@ html[data-locale="en"] .detail-hero .eyebrow {
   transition:
     background-color var(--motion-fast) var(--ease-smooth),
     border-color var(--motion-fast) var(--ease-smooth),
+    box-shadow var(--motion-fast) var(--ease-smooth),
     transform var(--motion-fast) var(--ease-smooth);
+}
+
+.control-tabs-trigger[data-lane="attention"] {
+  --lane-accent: var(--danger);
+  --lane-soft-bg: rgba(201, 63, 73, 0.1);
+  --lane-soft-border: rgba(201, 63, 73, 0.24);
+  --lane-focus-ring: rgba(201, 63, 73, 0.16);
+}
+
+.control-tabs-trigger[data-lane="running"] {
+  --lane-accent: var(--info);
+  --lane-soft-bg: rgba(74, 157, 124, 0.11);
+  --lane-soft-border: rgba(74, 157, 124, 0.24);
+  --lane-focus-ring: rgba(74, 157, 124, 0.16);
+}
+
+.control-tabs-trigger[data-lane="recent-completed"] {
+  --lane-accent: var(--ok);
+  --lane-soft-bg: rgba(47, 138, 93, 0.11);
+  --lane-soft-border: rgba(47, 138, 93, 0.22);
+  --lane-focus-ring: rgba(47, 138, 93, 0.14);
+}
+
+.control-tabs-trigger[data-lane="queued"] {
+  --lane-accent: #8d6a39;
+  --lane-soft-bg: rgba(141, 106, 57, 0.1);
+  --lane-soft-border: rgba(141, 106, 57, 0.22);
+  --lane-focus-ring: rgba(141, 106, 57, 0.14);
 }
 
 .control-tabs-trigger:hover {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.72);
+}
+
+.control-tabs-trigger:focus {
+  outline: none;
+}
+
+.control-tabs-trigger:focus-visible {
+  outline: none;
+  border-color: var(--lane-soft-border);
+  box-shadow: 0 0 0 4px var(--lane-focus-ring);
 }
 
 .control-tabs-trigger strong {
@@ -2043,9 +2129,13 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .control-tabs-trigger[data-state="active"] {
-  background: rgba(231, 90, 99, 0.12);
-  border-color: rgba(231, 90, 99, 0.26);
-  color: var(--accent);
+  background: var(--lane-soft-bg);
+  border-color: var(--lane-soft-border);
+  color: var(--lane-accent);
+}
+
+.control-tabs-trigger[data-state="active"] strong {
+  color: currentColor;
 }
 
 .control-tabs-content[data-state="inactive"] {

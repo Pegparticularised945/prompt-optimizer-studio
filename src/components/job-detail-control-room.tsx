@@ -298,24 +298,30 @@ export function JobDetailControlRoom({
             </div>
 
             <div className="stable-rules-grid">
-              <div className="active-goal-grid compact-goal-grid">
+              <div className="active-goal-grid compact-goal-grid" data-ui="stable-rules-goal-stack">
                 <ReadonlyGoalField
                   label={text('长期目标', 'Stable goal')}
                   value={model.goalAnchor.goal}
                   expandLabel={text('展开全部', 'Expand all')}
                   collapseLabel={text('收起', 'Collapse')}
+                  collapsedPreview={text('内容较长，展开查看完整内容', 'Long content. Expand to view the full text.')}
                 />
                 <ReadonlyGoalField
                   label={text('长期交付物', 'Stable deliverable')}
                   value={model.goalAnchor.deliverable}
                   expandLabel={text('展开全部', 'Expand all')}
                   collapseLabel={text('收起', 'Collapse')}
+                  collapsedPreview={text('内容较长，展开查看完整内容', 'Long content. Expand to view the full text.')}
                 />
                 <ReadonlyGoalField
                   label={text('长期边界', 'Stable guardrails')}
                   value={model.goalAnchor.driftGuard.join('\n')}
                   expandLabel={text('展开全部', 'Expand all')}
                   collapseLabel={text('收起', 'Collapse')}
+                  collapsedPreview={text(
+                    `共 ${model.goalAnchor.driftGuard.length} 条边界，展开查看完整内容`,
+                    `${model.goalAnchor.driftGuard.length} guardrails. Expand to view the full text.`,
+                  )}
                 />
               </div>
 
@@ -733,21 +739,35 @@ function ReadonlyGoalField({
   value,
   expandLabel,
   collapseLabel,
+  collapsedPreview,
 }: {
   label: string
   value: string
   expandLabel: string
   collapseLabel: string
+  collapsedPreview?: string
 }) {
   const shouldCollapse = shouldCollapseGoalValue(value)
+  const preview = collapsedPreview ?? getGoalValuePreview(value)
 
   return (
     <div className="active-goal-card compact-goal-card">
-      <div className="label">{label}</div>
+      <div className="active-goal-card-head">
+        <div className="label">{label}</div>
+      </div>
       {shouldCollapse ? (
         <details className="goal-value-fold" data-ui="goal-value-fold">
           <summary className="fold-card-summary">
-            <FoldCardSummary title={label} closedLabel={expandLabel} openLabel={collapseLabel} />
+            <span className="goal-value-summary-row">
+              <span className="goal-value-preview">{preview}</span>
+              <span className="fold-card-summary-meta">
+                <span className="fold-card-state fold-card-state-closed">{expandLabel}</span>
+                <span className="fold-card-state fold-card-state-open">{collapseLabel}</span>
+                <span className="fold-card-chevron" aria-hidden="true">
+                  <ChevronDown size={16} />
+                </span>
+              </span>
+            </span>
           </summary>
           <div className="active-goal-value">{value}</div>
         </details>
@@ -763,6 +783,15 @@ function shouldCollapseGoalValue(value: string) {
   if (!normalized) return false
   const lineCount = normalized.split('\n').filter(Boolean).length
   return lineCount > 2 || normalized.length > 110
+}
+
+function getGoalValuePreview(value: string) {
+  const normalized = value.replace(/\s+/g, ' ').trim()
+  if (normalized.length <= 56) {
+    return normalized
+  }
+
+  return `${normalized.slice(0, 56).trimEnd()}…`
 }
 
 function FoldCardSummary({

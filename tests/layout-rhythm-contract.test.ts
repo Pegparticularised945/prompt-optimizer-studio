@@ -19,4 +19,41 @@ test('section rhythm styles avoid fixed header min-height hacks for settings and
   )
 
   assert.match(source, /\.section-body-stack\s*\{/)
+  assert.match(source, /\.settings-secondary-layout\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/s)
+})
+
+
+test('dashboard status chrome stays on the local surface and avoids browser-default blue focus', () => {
+  const source = fs.readFileSync(
+    '/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/.worktrees/open-source-hardening/src/styles/globals.css',
+    'utf8',
+  )
+
+  assert.doesNotMatch(
+    source,
+    /\.summary-icon\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255/s,
+  )
+
+  assert.match(
+    source,
+    /\.control-tabs-trigger:focus-visible\s*\{[^}]*box-shadow:/s,
+  )
+
+  assert.match(
+    source,
+    /\.control-tabs-trigger\[data-state="active"\]\s*\{[^}]*color:\s*var\(--lane-accent\)/s,
+  )
+})
+
+
+test('stable-rule cards use a single-column stack instead of a 2+1 mosaic', () => {
+  const source = fs.readFileSync(
+    '/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/.worktrees/open-source-hardening/src/styles/globals.css',
+    'utf8',
+  )
+
+  assert.match(
+    source,
+    /\.compact-goal-grid\s*\{[^}]*grid-template-columns:\s*1fr/s,
+  )
 })

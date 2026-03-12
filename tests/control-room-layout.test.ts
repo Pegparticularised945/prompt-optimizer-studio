@@ -700,6 +700,29 @@ test('job detail keeps stable-rule adjustment available for editable states', ()
   assert.match(html, /保存长期规则/)
 })
 
+
+test('job detail stable-rule cards stack vertically and avoid duplicate collapsed labels', () => {
+  const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps({
+    model: {
+      status: 'completed',
+      goalAnchor: {
+        goal: '这是一个需要被折叠展示的长期目标，因为内容足够长，且不应该在卡片标题和折叠头里重复出现同一段标签。',
+        deliverable: '这是一份需要被折叠展示的长期交付物说明，应该保持单一标题层级，而不是在外层和内层各重复一次标签。',
+        driftGuard: [
+          '第一条长期边界：保持 Review 模式和量化评分闭环，不要漂移成泛泛建议。',
+          '第二条长期边界：保留阈值、死胡同判定与单一最终交付。',
+          '第三条长期边界：保留 MVE 与边界压测，不得删改。',
+        ],
+      },
+    },
+  })))
+
+  assert.match(html, /data-ui="stable-rules-goal-stack"/)
+  assert.equal(countOccurrences(html, '>长期目标<'), 1)
+  assert.equal(countOccurrences(html, '>长期交付物<'), 1)
+  assert.equal(countOccurrences(html, '>长期边界<'), 1)
+})
+
 test('job detail stable rules preview shows job-level scoring override when present', () => {
   const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps({
     model: {
@@ -794,6 +817,37 @@ test('goal-anchor draft note explains that saving is still required', () => {
   assert.match(html, /已把选中项带入长期规则编辑区/)
   assert.match(html, /现在还只是草稿。点击“保存长期规则”后，选中的条目才会成为长期规则/) 
   assert.match(html, /未选中的条目会继续留在待生效列表/)
+})
+
+
+test('settings control room keeps one dominant rubric column with two compact side panels', () => {
+  const html = renderToStaticMarkup(createElement(SettingsControlRoom, {
+    form: {
+      cpamcBaseUrl: 'https://api.openai.com/v1',
+      cpamcApiKey: 'secret',
+      apiProtocol: 'auto',
+      defaultTaskModel: 'gpt-5.2',
+      scoreThreshold: 95,
+      maxRounds: 8,
+      workerConcurrency: 2,
+      customRubricMd: '',
+    },
+    models: [],
+    loading: false,
+    saving: false,
+    testing: false,
+    loadingModels: false,
+    message: null,
+    error: null,
+    onSave: () => {},
+    onTestConnection: () => {},
+    onRefreshModels: () => {},
+    onFormChange: () => {},
+  }))
+
+  assert.match(html, /data-ui="settings-rubric-panel"/)
+  assert.equal(countOccurrences(html, 'data-ui="settings-side-panel"'), 2)
+  assert.ok(html.indexOf('data-ui="settings-rubric-panel"') < html.indexOf('data-ui="settings-side-column"'))
 })
 
 test('settings control room groups connection, defaults, and active runtime fields only', () => {
