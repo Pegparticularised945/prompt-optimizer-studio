@@ -174,6 +174,11 @@ html[data-locale="en"] .detail-hero .eyebrow {
   font-size: 0.84rem;
 }
 
+.detail-stage-label {
+  font-size: 0.98rem;
+  letter-spacing: 0.06em;
+}
+
 .sidebar-nav {
   display: grid;
   gap: 6px;
@@ -636,6 +641,11 @@ html[data-locale="en"] .detail-hero .eyebrow {
   background: rgba(255, 255, 255, 0.66);
 }
 
+.combobox-search-row:focus-within {
+  border-color: rgba(231, 90, 99, 0.32);
+  box-shadow: 0 0 0 3px rgba(231, 90, 99, 0.12);
+}
+
 .combobox-search-icon {
   display: inline-flex;
   align-items: center;
@@ -658,6 +668,7 @@ html[data-locale="en"] .detail-hero .eyebrow {
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-content: space-between;
   padding: 12px 14px;
   border-radius: 16px;
   cursor: pointer;
@@ -665,19 +676,18 @@ html[data-locale="en"] .detail-hero .eyebrow {
   color: var(--ink);
   transition:
     background-color var(--motion-fast) var(--ease-smooth),
-    transform var(--motion-fast) var(--ease-smooth);
+    border-color var(--motion-fast) var(--ease-smooth),
+    color var(--motion-fast) var(--ease-smooth);
 }
 
 .select-field-item[data-highlighted],
-.combobox-item[aria-selected="true"],
-.combobox-item[data-selected="true"] {
+.combobox-item[aria-selected="true"] {
   outline: none;
-  background: rgba(231, 90, 99, 0.12);
+  background: rgba(231, 90, 99, 0.14);
 }
 
-.select-field-item:hover,
-.combobox-item:hover {
-  transform: translateY(-1px);
+.select-field-item:hover:not([data-highlighted]),
+.combobox-item:hover:not([aria-selected="true"]) {
   background: rgba(255, 255, 255, 0.76);
 }
 
@@ -689,12 +699,30 @@ html[data-locale="en"] .detail-hero .eyebrow {
   flex: 0 0 16px;
 }
 
+.combobox-item-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 16px;
+  color: var(--accent);
+  opacity: 0;
+}
+
+.combobox-item[data-current="true"] {
+  box-shadow: inset 0 0 0 1px rgba(231, 90, 99, 0.2);
+}
+
+.combobox-item[data-current="true"] .combobox-item-indicator {
+  opacity: 1;
+}
+
 .combobox-empty {
   padding: 12px 14px;
   color: var(--ink-soft);
 }
 
 .combobox-item-main {
+  flex: 1 1 auto;
   font-weight: 700;
 }
 
@@ -835,6 +863,21 @@ html[data-locale="en"] .detail-hero .eyebrow {
   gap: 16px;
 }
 
+.rationale-inline-block,
+.steering-impact-inline {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid rgba(72, 50, 27, 0.12);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 252, 246, 0.76);
+}
+
+.rationale-list,
+.steering-impact-inline .compact-list {
+  margin: 0;
+}
+
 .explanation-strip-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -859,23 +902,89 @@ html[data-locale="en"] .detail-hero .eyebrow {
   align-content: start;
 }
 
-.rubric-preview-fold {
+.rubric-preview-fold,
+.rubric-editor-fold {
   display: grid;
   gap: 12px;
 }
 
-.rubric-preview-fold summary {
-  cursor: pointer;
-  font-weight: 700;
-  list-style: none;
+.fold-card-toggle {
+  padding: 0;
+  overflow: hidden;
 }
 
-.rubric-preview-fold summary::-webkit-details-marker {
+.fold-card-toggle[open] {
+  border-color: rgba(231, 90, 99, 0.22);
+  background: rgba(255, 247, 244, 0.74);
+}
+
+.fold-card-toggle summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 16px;
+}
+
+.fold-card-toggle summary::-webkit-details-marker {
   display: none;
+}
+
+.fold-card-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fold-card-title {
+  font-weight: 700;
+}
+
+.fold-card-summary-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+}
+
+.fold-card-state {
+  font-size: 0.9rem;
+}
+
+.fold-card-state-open {
+  display: none;
+}
+
+.fold-card-toggle[open] .fold-card-state-closed {
+  display: none;
+}
+
+.fold-card-toggle[open] .fold-card-state-open {
+  display: inline-flex;
+}
+
+.fold-card-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--motion-fast) var(--ease-smooth);
+}
+
+.fold-card-toggle[open] .fold-card-chevron {
+  transform: rotate(180deg);
 }
 
 .rubric-pre {
   max-height: 280px;
+  margin: 0;
+  padding: 0 16px 16px;
+}
+
+.rubric-editor-fold > .label {
+  padding: 0 16px;
+}
+
+.rubric-editor-fold > .inline-actions {
+  padding: 0 16px 16px;
 }
 
 .goal-summary-note,
@@ -1010,12 +1119,6 @@ html[data-locale="en"] .detail-hero .eyebrow {
 .round-review-section {
   display: grid;
   gap: 8px;
-}
-
-.steering-impact-card {
-  border-style: solid;
-  border-color: rgba(231, 90, 99, 0.18);
-  background: rgba(255, 246, 244, 0.82);
 }
 
 .icon-button {
@@ -1452,10 +1555,11 @@ html[data-locale="en"] .detail-hero .eyebrow {
 .summary-card {
   display: grid;
   gap: 10px;
-  padding: 16px;
+  padding: 14px 16px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--line);
-  background: rgba(255, 252, 246, 0.78);
+  background: rgba(255, 252, 246, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
 }
 
 .summary-top {
@@ -1465,7 +1569,7 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .summary-label {
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--ink-soft);
 }
@@ -1475,35 +1579,31 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .summary-card .summary-value {
-  font-size: 1.28rem;
-  line-height: 1;
-  text-align: right;
+  font-size: 1.14rem;
+  line-height: 1.1;
+  text-align: left;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
 .control-room-hero .summary-card .summary-value {
-  font-size: 1.55rem;
+  font-size: 1.36rem;
 }
 
 .summary-card.tone-manual_review {
-  border-color: rgba(201, 63, 73, 0.28);
-  background: rgba(255, 238, 241, 0.88);
+  border-color: rgba(201, 63, 73, 0.2);
 }
 
 .summary-card.tone-running {
-  border-color: rgba(231, 90, 99, 0.22);
-  background: rgba(255, 243, 244, 0.88);
+  border-color: rgba(231, 90, 99, 0.18);
 }
 
 .summary-card.tone-completed {
-  border-color: rgba(47, 138, 93, 0.24);
-  background: rgba(238, 250, 243, 0.88);
+  border-color: rgba(47, 138, 93, 0.18);
 }
 
 .summary-card.tone-pending {
-  border-color: rgba(184, 134, 24, 0.22);
-  background: rgba(255, 249, 236, 0.88);
+  border-color: rgba(184, 134, 24, 0.18);
 }
 
 .summary-icon {

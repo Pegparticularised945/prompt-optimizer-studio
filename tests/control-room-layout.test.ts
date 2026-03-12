@@ -114,6 +114,7 @@ test('dashboard control room prioritizes attention, running, and latest results'
   assert.match(html, /最新结果/)
   assert.match(html, /排队中/)
   assert.match(html, /历史任务/)
+  assert.doesNotMatch(html, /aria-controls="radix-/)
   assert.match(html, /先处理要你决策的任务/)
   assert.doesNotMatch(html, /class="section-title lane-title"/)
   assert.doesNotMatch(html, /前往设置/)
@@ -282,6 +283,7 @@ test('settings control room moves save action into one shared bar below the comp
       defaultTaskModel: '',
       scoreThreshold: 95,
       maxRounds: 8,
+      workerConcurrency: 2,
       customRubricMd: '',
     },
     models: [],
@@ -317,6 +319,7 @@ test('settings control room keeps Chinese-only rubric label by default', () => {
       defaultTaskModel: '',
       scoreThreshold: 95,
       maxRounds: 8,
+      workerConcurrency: 2,
       customRubricMd: '',
     },
     models: [],
@@ -493,6 +496,17 @@ test('job detail readonly goal fields use compact scrollable summaries', () => {
   assert.equal((html.match(/class="active-goal-card compact-goal-card compact-scroll-card"/g) ?? []).length, 3)
 })
 
+test('job detail moves rationale into stable rules above the stable goal cards', () => {
+  const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps()))
+
+  assert.doesNotMatch(html, /提炼解释/)
+  assert.doesNotMatch(html, /查看提炼依据/)
+  assert.match(html, /提炼依据/)
+  assert.match(html, /原始任务要求输出完整提示词。/)
+  assert.match(html, /系统识别到核心任务是优化提示词。/)
+  assert.ok(html.indexOf('提炼依据') < html.indexOf('>长期目标<'))
+})
+
 test('job detail exposes pending steering cards and goal-anchor merge entry when steering exists', () => {
   const steeredModel = makeDetailModel()
   steeredModel.pendingSteeringItems = [
@@ -574,15 +588,14 @@ test('job detail exposes pending steering cards and goal-anchor merge entry when
   assert.match(html, /待生效引导/)
   assert.match(html, /语气更直接，但保留老中医式判断和原有核心结论。/)
   assert.match(html, /最终给我的仍然应该是可一键复制的完整提示词。/)
-  assert.match(html, /当前这组引导会怎样影响下一轮/)
+  assert.match(html, /这组引导对下一轮的影响/)
   assert.match(html, /运行控制/)
   assert.match(html, /下一轮引导/)
   assert.match(html, /追加一条人工引导/)
   assert.match(html, /生成长期规则草稿/)
   assert.match(html, /待生效列表/)
   assert.match(html, /勾选后，生成草稿并保存，才会进入长期规则/)
-  assert.match(html, /查看提炼依据/)
-  assert.match(html, /查看影响细节/)
+  assert.match(html, /提炼依据/)
   assert.match(html, /reviewer 不会看到这些引导原文/)
   assert.doesNotMatch(html, /待生效引导卡片/)
   assert.match(html, /取消任务/)
@@ -606,8 +619,11 @@ test('job detail explanation removes duplicated source labels and keeps task sco
   assert.match(html, /当前评分标准/)
   assert.match(html, /当前来源：配置台/)
   assert.match(html, /# 默认评分标准/)
+  assert.match(html, /评分标准预览/)
+  assert.match(html, /编辑任务评分标准/)
   assert.doesNotMatch(html, /只影响当前任务；留空则跟随配置台里的全局评分标准。支持 Markdown。/)
   assert.doesNotMatch(html, /单任务评分标准 · 跟随配置台/)
+  assert.doesNotMatch(html, />展开评分标准</)
   assert.ok(html.indexOf('长期规则') < html.indexOf('当前评分标准'))
 })
 
@@ -716,6 +732,7 @@ test('settings control room groups connection, defaults, and active runtime fiel
       defaultTaskModel: 'gpt-5.2',
       scoreThreshold: 95,
       maxRounds: 8,
+      workerConcurrency: 2,
       customRubricMd: '',
     },
     models: [],
@@ -747,6 +764,7 @@ test('settings control room groups connection, defaults, and active runtime fiel
   assert.match(html, /快速选择服务商/)
   assert.match(html, /Base URL/)
   assert.match(html, /API Key/)
+  assert.match(html, /同时运行任务数/)
   assert.match(html, /data-ui="select-field"/)
   assert.ok(countOccurrences(html, 'data-ui="select-field"') >= 2)
   assert.equal(countOccurrences(html, '>配置台<'), 1)
@@ -761,7 +779,6 @@ test('settings control room groups connection, defaults, and active runtime fiel
   assert.doesNotMatch(html, /运行行为/)
   assert.doesNotMatch(html, /裁判数量/)
   assert.doesNotMatch(html, /无提升上限/)
-  assert.doesNotMatch(html, /并发数/)
   assert.doesNotMatch(html, /会话策略/)
   assert.doesNotMatch(html, /CPAMC/)
   assert.doesNotMatch(html, /协议识别/)
@@ -782,6 +799,7 @@ test('settings control room keeps rubric copy Chinese-only in zh view', () => {
       defaultTaskModel: 'gpt-5.2',
       scoreThreshold: 95,
       maxRounds: 8,
+      workerConcurrency: 2,
       customRubricMd: '',
     },
     models: [],

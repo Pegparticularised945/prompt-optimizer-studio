@@ -25,6 +25,7 @@ import {
   getPromptPreview,
   groupHistoryJobsByTitle,
 } from '@/lib/presentation'
+import { useHydrated } from '@/components/ui/use-hydrated'
 import { useI18n, useLocaleText } from '@/lib/i18n'
 
 export type DashboardJobView = {
@@ -82,6 +83,7 @@ export function DashboardControlRoom({
 }) {
   const [historyQuery, setHistoryQuery] = useState('')
   const [expandedHistoryGroups, setExpandedHistoryGroups] = useState<string[]>([])
+  const hydrated = useHydrated()
   const { locale } = useI18n()
   const text = useLocaleText()
 
@@ -163,6 +165,52 @@ export function DashboardControlRoom({
     setActiveLane(defaultLane)
   }, [defaultLane])
 
+  const activeLaneView = lanes.find((lane) => lane.key === activeLane) ?? lanes[0]
+
+  const renderLanePanel = (lane: (typeof lanes)[number]) => (
+    lane.key === 'recent-completed' ? (
+      <div className="latest-results-grid" data-ui="latest-results-grid">
+        <DashboardLane
+          title={text('最近完成', 'Recently completed')}
+          description={lane.description}
+          jobs={lane.jobs}
+          emptyMessage={lane.emptyMessage}
+          actionInFlight={actionInFlight}
+          onCopyPrompt={onCopyPrompt}
+          onResumeAuto={onResumeAuto}
+          onResumeStep={onResumeStep}
+          compact
+          dataUi="recent-results-column"
+        />
+        <HistoryLane
+          hydrated={hydrated}
+          title={text('历史任务', 'History')}
+          description={text('把旧任务按标题归拢，先搜名字，再展开具体运行记录。', 'Group older jobs by title. Search by name first, then expand the specific runs.')}
+          groups={historyGroups}
+          query={historyQuery}
+          onQueryChange={setHistoryQuery}
+          expandedGroups={expandedHistoryGroups}
+          onExpandedGroupsChange={setExpandedHistoryGroups}
+          emptyMessage={text('暂无历史任务。', 'No history yet.')}
+          onCopyPrompt={onCopyPrompt}
+          dataUi="history-results-column"
+        />
+      </div>
+    ) : (
+      <DashboardLane
+        title={undefined}
+        description={lane.description}
+        jobs={lane.jobs}
+        emptyMessage={lane.emptyMessage}
+        actionInFlight={actionInFlight}
+        onCopyPrompt={onCopyPrompt}
+        onResumeAuto={onResumeAuto}
+        onResumeStep={onResumeStep}
+        compact
+      />
+    )
+  )
+
   return (
     <section className="control-room">
       <div className="control-room-hero">
@@ -194,74 +242,61 @@ export function DashboardControlRoom({
       {middleSlot}
 
       <section className="control-board">
-        <Tabs.Root value={activeLane} onValueChange={(next) => setActiveLane(next as LaneKey)} className="control-tabs">
-          <Tabs.List className="control-tabs-list" aria-label={text('控制板视图切换', 'Switch control-board views')}>
-            {lanes.map((lane) => (
-              <Tabs.Trigger
-                key={lane.key}
-                value={lane.key}
-                className="control-tabs-trigger"
-                data-lane={lane.key}
-              >
-                {lane.icon}
-                <span>{lane.title}</span>
-                <strong>{lane.jobs.length}</strong>
-              </Tabs.Trigger>
-            ))}
-          </Tabs.List>
+        {!hydrated ? (
+          <div className="control-tabs" data-ui="control-tabs-fallback">
+            <div className="control-tabs-list" aria-label={text('控制板视图切换', 'Switch control-board views')}>
+              {lanes.map((lane) => (
+                <button
+                  key={lane.key}
+                  type="button"
+                  className="control-tabs-trigger"
+                  data-lane={lane.key}
+                  data-state={lane.key === activeLane ? 'active' : 'inactive'}
+                  aria-pressed={lane.key === activeLane}
+                >
+                  {lane.icon}
+                  <span>{lane.title}</span>
+                  <strong>{lane.jobs.length}</strong>
+                </button>
+              ))}
+            </div>
+            <div className="control-tabs-content" data-state="active">
+              <div className="lane-content">
+                {activeLaneView ? renderLanePanel(activeLaneView) : null}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <Tabs.Root value={activeLane} onValueChange={(next) => setActiveLane(next as LaneKey)} className="control-tabs">
+            <Tabs.List className="control-tabs-list" aria-label={text('控制板视图切换', 'Switch control-board views')}>
+              {lanes.map((lane) => (
+                <Tabs.Trigger
+                  key={lane.key}
+                  value={lane.key}
+                  className="control-tabs-trigger"
+                  data-lane={lane.key}
+                >
+                  {lane.icon}
+                  <span>{lane.title}</span>
+                  <strong>{lane.jobs.length}</strong>
+                </Tabs.Trigger>
+              ))}
+            </Tabs.List>
 
-          {lanes.map((lane) => (
-            <Tabs.Content key={lane.key} value={lane.key} className="control-tabs-content">
-              <motion.div
-                initial={false}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                className="lane-content"
-              >
-                {lane.key === 'recent-completed' ? (
-                  <div className="latest-results-grid" data-ui="latest-results-grid">
-                    <DashboardLane
-                      title={text('最近完成', 'Recently completed')}
-                      description={lane.description}
-                      jobs={lane.jobs}
-                      emptyMessage={lane.emptyMessage}
-                      actionInFlight={actionInFlight}
-                      onCopyPrompt={onCopyPrompt}
-                      onResumeAuto={onResumeAuto}
-                      onResumeStep={onResumeStep}
-                      compact
-                      dataUi="recent-results-column"
-                    />
-                    <HistoryLane
-                      title={text('历史任务', 'History')}
-                      description={text('把旧任务按标题归拢，先搜名字，再展开具体运行记录。', 'Group older jobs by title. Search by name first, then expand the specific runs.')}
-                      groups={historyGroups}
-                      query={historyQuery}
-                      onQueryChange={setHistoryQuery}
-                      expandedGroups={expandedHistoryGroups}
-                      onExpandedGroupsChange={setExpandedHistoryGroups}
-                      emptyMessage={text('暂无历史任务。', 'No history yet.')}
-                      onCopyPrompt={onCopyPrompt}
-                      dataUi="history-results-column"
-                    />
-                  </div>
-                ) : (
-                  <DashboardLane
-                    title={undefined}
-                    description={lane.description}
-                    jobs={lane.jobs}
-                    emptyMessage={lane.emptyMessage}
-                    actionInFlight={actionInFlight}
-                    onCopyPrompt={onCopyPrompt}
-                    onResumeAuto={onResumeAuto}
-                    onResumeStep={onResumeStep}
-                    compact
-                  />
-                )}
-              </motion.div>
-            </Tabs.Content>
-          ))}
-        </Tabs.Root>
+            {lanes.map((lane) => (
+              <Tabs.Content key={lane.key} value={lane.key} className="control-tabs-content">
+                <motion.div
+                  initial={false}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  className="lane-content"
+                >
+                  {renderLanePanel(lane)}
+                </motion.div>
+              </Tabs.Content>
+            ))}
+          </Tabs.Root>
+        )}
       </section>
     </section>
   )
@@ -316,6 +351,7 @@ function DashboardLane({
 }
 
 function HistoryLane({
+  hydrated,
   title,
   description,
   groups,
@@ -327,6 +363,7 @@ function HistoryLane({
   onCopyPrompt,
   dataUi,
 }: {
+  hydrated: boolean
   title: string
   description: string
   groups: HistoryGroupView[]
@@ -362,7 +399,18 @@ function HistoryLane({
 
       <div className="history-stack">
         {groups.length === 0 ? <div className="notice">{query.trim() ? text('没有匹配的历史任务。', 'No matching history jobs.') : emptyMessage}</div> : null}
-        {groups.length > 0 ? (
+        {!hydrated && groups.length > 0 ? (
+          <div className="history-accordion history-accordion-static">
+            {groups.map((group) => (
+              <HistoryGroupCardStatic
+                key={group.key}
+                group={group}
+                onCopyPrompt={onCopyPrompt}
+              />
+            ))}
+          </div>
+        ) : null}
+        {hydrated && groups.length > 0 ? (
           <Accordion.Root
             type="multiple"
             value={expandedGroups}
@@ -380,6 +428,74 @@ function HistoryLane({
         ) : null}
       </div>
     </section>
+  )
+}
+
+function HistoryGroupCardStatic({
+  group,
+  onCopyPrompt,
+}: {
+  group: HistoryGroupView
+  onCopyPrompt: (job: DashboardJobView) => Promise<void>
+}) {
+  const { locale } = useI18n()
+  const text = useLocaleText()
+  const latestJob = group.jobs[0]
+  if (!latestJob) {
+    return null
+  }
+
+  return (
+    <div className="history-group-card">
+      <div className="history-group-header">
+        <div className="history-group-toggle" data-state="collapsed">
+          <div className="history-group-summary">
+            <div className="card-topline">
+              <span className={`status ${latestJob.status}`}>{getJobStatusLabel(latestJob.status, locale)}</span>
+              <span className="meta">{formatRunCount(group.jobs.length, locale)}</span>
+            </div>
+            <h3>{group.title}</h3>
+            <p className="prompt-preview">{getPromptPreview(latestJob.latestPrompt, 120)}</p>
+            <div className="card-metrics">
+              <span>{text('最近更新', 'Updated')} {formatDate(latestJob.createdAt, locale)}</span>
+              <span>{text('最新最佳', 'Best')} {latestJob.bestAverageScore.toFixed(2)}</span>
+            </div>
+          </div>
+          <span className="history-group-chevron" aria-hidden="true">
+            <ChevronDown size={18} />
+          </span>
+        </div>
+      </div>
+      <div className="history-run-list">
+        <div className="history-run-list-inner">
+          {group.jobs.map((job) => (
+            <div className="history-run-row" key={job.id}>
+              <div className="history-run-copy">
+                <div className="card-topline">
+                  <span className={`status ${job.status}`}>{getJobStatusLabel(job.status, locale)}</span>
+                  <span className="meta">{formatDate(job.createdAt, locale)}</span>
+                </div>
+                <div className="card-metrics compact-metrics">
+                  <span>{text('轮次', 'Round')} {job.currentRound}</span>
+                  <span>{text('最佳均分', 'Best avg')} {job.bestAverageScore.toFixed(2)}</span>
+                  <span>{text('模型', 'Model')} {job.optimizerModel}</span>
+                </div>
+              </div>
+              <div className="inline-actions secondary-actions">
+                {(job.status === 'completed' || job.status === 'manual_review' || job.status === 'paused') ? (
+                  <button className="button ghost" type="button" onClick={() => void onCopyPrompt(job)}>
+                    <Copy size={16} /> {text('复制', 'Copy')}
+                  </button>
+                ) : null}
+                <Link href={`/jobs/${job.id}` as Route} className="button ghost">
+                  {text('详情', 'Details')} <ChevronRight size={16} />
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
 

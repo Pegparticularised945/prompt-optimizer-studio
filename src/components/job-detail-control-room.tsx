@@ -3,13 +3,13 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
   Copy,
   PauseCircle,
   PlayCircle,
   Plus,
   RefreshCcw,
   Settings2,
-  Sparkles,
   Trash2,
   WandSparkles,
 } from 'lucide-react'
@@ -163,7 +163,7 @@ export function JobDetailControlRoom({
         </div>
         <div className="detail-hero-grid">
           <div>
-            <span className="eyebrow"><Sparkles size={16} /> {text('结果台', 'Result Desk')}</span>
+            <span className="eyebrow detail-stage-label">{text('结果台', 'Result Desk')}</span>
             <h1>{model.title}</h1>
             <p className="hero-lead">{text('先确认最终结果，再检查目标理解，最后决定是否继续推进任务。', 'Confirm the latest result first, then inspect the goal understanding, and only then decide whether to continue.')}</p>
           </div>
@@ -261,52 +261,6 @@ export function JobDetailControlRoom({
 
       <section className="understanding-stage">
         <div className="understanding-stack">
-          <div className="panel explanation-panel">
-            <div className="section-head">
-              <div>
-                <h2 className="section-title has-icon">
-                  <span className="section-title-icon" data-ui="section-title-icon" aria-hidden="true">
-                    <WandSparkles size={18} />
-                  </span>
-                  {text('提炼解释', 'Condensed explanation')}
-                </h2>
-                <p className="small">{text('先看长期解释，再看这组临时引导会怎样改变下一轮。', 'Read the stable explanation first, then see how the pending steering changes the next round.')}</p>
-              </div>
-            </div>
-
-            <div className="explanation-strip-grid">
-              <div className="explanation-card">
-                <strong>{text('长期解释', 'Stable explanation')}</strong>
-                <p className="small">{model.goalAnchorExplanation.sourceSummary}</p>
-                <details className="fold-card explanation-fold">
-                  <summary>{text('查看提炼依据', 'View rationale')}</summary>
-                  <ul className="list compact-list">
-                    {model.goalAnchorExplanation.rationale.map((item, index) => (
-                      <li key={`goal-rationale-${index}`}>{item}</li>
-                    ))}
-                  </ul>
-                </details>
-              </div>
-
-              {hasPendingSteering ? (
-                <div className="explanation-card steering-impact-card">
-                  <strong>{text('当前这组引导会怎样影响下一轮', 'How this steering batch will affect the next round')}</strong>
-                  <p className="small">{text(`本轮会按当前顺序吸收 ${model.pendingSteeringItems.length} 条引导；如果下一轮把其中内容写进完整提示词，后续轮次会继续受影响。`, `The next round will absorb these ${model.pendingSteeringItems.length} steering items in order. If that round writes them into the full prompt, later rounds will keep inheriting the change.`)}</p>
-                  <details className="fold-card explanation-fold">
-                    <summary>{text('查看影响细节', 'View impact details')}</summary>
-                    <ul className="list compact-list">
-                      {model.pendingSteeringItems.map((item) => (
-                        <li key={`impact-${item.id}`}>{item.text}</li>
-                      ))}
-                      <li>{text('optimizer 会按当前顺序吸收这组引导，再基于完整提示词做最小必要改动。', 'The optimizer absorbs this steering batch in order, then makes only the smallest necessary changes to the full prompt.')}</li>
-                      <li>{text('reviewer 不会看到这些引导原文，只会看到下一轮产出的候选提示词。', 'The reviewer never sees the raw steering. It only sees the candidate prompt produced in the next round.')}</li>
-                    </ul>
-                  </details>
-                </div>
-              ) : null}
-            </div>
-          </div>
-
           <div className="panel understanding-panel">
             <div className="section-head">
               <div>
@@ -324,6 +278,20 @@ export function JobDetailControlRoom({
               </div>
             </div>
 
+            <div className="rationale-inline-block">
+              <div className="section-head compact-head">
+                <div>
+                  <strong>{text('提炼依据', 'Rationale')}</strong>
+                  <p className="small">{model.goalAnchorExplanation.sourceSummary}</p>
+                </div>
+              </div>
+              <ul className="list compact-list rationale-list">
+                {model.goalAnchorExplanation.rationale.map((item, index) => (
+                  <li key={`goal-rationale-${index}`}>{item}</li>
+                ))}
+              </ul>
+            </div>
+
             <div className="stable-rules-grid">
               <div className="active-goal-grid compact-goal-grid">
                 <ReadonlyGoalField label={text('长期目标', 'Stable goal')} value={model.goalAnchor.goal} />
@@ -339,14 +307,26 @@ export function JobDetailControlRoom({
                   </div>
                 </div>
 
-                <details className="fold-card rubric-preview-fold">
-                  <summary>{text('展开评分标准', 'View scoring standard')}</summary>
+                <details className="fold-card fold-card-toggle rubric-preview-fold">
+                  <summary className="fold-card-summary">
+                    <FoldCardSummary
+                      title={text('评分标准预览', 'Scoring standard preview')}
+                      closedLabel={text('展开', 'Expand')}
+                      openLabel={text('收起', 'Collapse')}
+                    />
+                  </summary>
                   <pre className="pre rubric-pre">{model.effectiveRubricMd}</pre>
                 </details>
 
                 {canEdit ? (
-                  <details className="fold-card rubric-editor-fold">
-                    <summary>{text('编辑任务评分标准', 'Edit task scoring standard')}</summary>
+                  <details className="fold-card fold-card-toggle rubric-editor-fold">
+                    <summary className="fold-card-summary">
+                      <FoldCardSummary
+                        title={text('编辑任务评分标准', 'Edit task scoring standard')}
+                        closedLabel={text('展开', 'Expand')}
+                        openLabel={text('收起', 'Collapse')}
+                      />
+                    </summary>
                     <label className="label">
                       {text('任务评分标准覆写', 'Task scoring override')}
                       <textarea
@@ -556,6 +536,20 @@ export function JobDetailControlRoom({
                 ) : null}
               </div>
             </div>
+            {hasPendingSteering ? (
+              <div className="steering-impact-inline">
+                <div className="section-head compact-head">
+                  <div>
+                    <strong>{text('这组引导对下一轮的影响', 'How this steering batch affects the next round')}</strong>
+                    <p className="small">{text(`下一轮会按当前顺序吸收这 ${model.pendingSteeringItems.length} 条引导；如果结果把其中内容写进完整提示词，后续轮次会继续继承这些变化。`, `The next round will absorb these ${model.pendingSteeringItems.length} steering items in order. If the resulting full prompt keeps them, later rounds will inherit the change too.`)}</p>
+                  </div>
+                </div>
+                <ul className="list compact-list">
+                  <li>{text('optimizer 会按当前顺序吸收这组引导，再基于完整提示词做最小必要改动。', 'The optimizer absorbs this steering batch in order, then makes the smallest necessary changes to the full prompt.')}</li>
+                  <li>{text('reviewer 不会看到这些引导原文，只会看到下一轮产出的候选提示词。', 'The reviewer never sees the raw steering. It only sees the next candidate prompt.')}</li>
+                </ul>
+              </div>
+            ) : null}
             <label className="label steering-control-field">
               {text('追加一条人工引导', 'Add one steering note')}
               <textarea className="textarea" value={form.pendingSteeringInput} onChange={(event) => handlers.onPendingSteeringInputChange(event.target.value)} disabled={!canSteer} />
@@ -720,5 +714,28 @@ function ReadonlyGoalField({
       <div className="label">{label}</div>
       <div className="active-goal-value active-goal-scroll">{value}</div>
     </div>
+  )
+}
+
+function FoldCardSummary({
+  title,
+  closedLabel,
+  openLabel,
+}: {
+  title: string
+  closedLabel: string
+  openLabel: string
+}) {
+  return (
+    <span className="fold-card-summary-row">
+      <span className="fold-card-title">{title}</span>
+      <span className="fold-card-summary-meta">
+        <span className="fold-card-state fold-card-state-closed">{closedLabel}</span>
+        <span className="fold-card-state fold-card-state-open">{openLabel}</span>
+        <span className="fold-card-chevron" aria-hidden="true">
+          <ChevronDown size={16} />
+        </span>
+      </span>
+    </span>
   )
 }
