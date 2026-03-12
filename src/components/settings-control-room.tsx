@@ -118,6 +118,7 @@ export function SettingsControlRoom({
               </p>
             </div>
           </div>
+          <div className="section-body-stack">
             <div className="form-grid settings-connection-grid">
               <SelectField
                 label={text("快速选择服务商", "Quick provider preset")}
@@ -161,6 +162,7 @@ export function SettingsControlRoom({
               <button className="button ghost" type="button" onClick={onRefreshModels} disabled={loadingModels}>{loadingModels ? text("刷新中...", "Refreshing...") : text("刷新模型列表", "Refresh model list")}</button>
               <button className="button secondary" type="button" onClick={onTestConnection} disabled={testing}>{testing ? text("测试中...", "Testing...") : text("测试连接", "Test connection")}</button>
             </div>
+          </div>
         </section>
 
         <div className="settings-grid settings-grid-compact">
@@ -176,16 +178,18 @@ export function SettingsControlRoom({
                 <p className="small">{text("对外只保留单一模型别名。优化器 / 复核器在任务里共享同一个可见模型名，不暴露 provider 内部路径。", "Keep one visible model alias in the UI. Optimizer and reviewer share that alias in each task, without exposing provider internals.")}</p>
               </div>
             </div>
-            <div className="form-grid">
-              <ModelAliasCombobox
-                inputId="settings-default-task-model"
-                label={text("默认任务模型", "Default task model")}
-                value={form.defaultTaskModel}
-                options={models}
-                placeholder={locale === "zh-CN" ? "例如：gpt-5.2 / claude-sonnet-4 / gemini-2.5-pro" : "For example: gpt-5.2 / claude-sonnet-4 / gemini-2.5-pro"}
-                disabled={loading || loadingModels}
-                onChange={(next) => onFormChange("defaultTaskModel", next)}
-              />
+            <div className="section-body-stack">
+              <div className="form-grid">
+                <ModelAliasCombobox
+                  inputId="settings-default-task-model"
+                  label={text("默认任务模型", "Default task model")}
+                  value={form.defaultTaskModel}
+                  options={models}
+                  placeholder={locale === "zh-CN" ? "例如：gpt-5.2 / claude-sonnet-4 / gemini-2.5-pro" : "For example: gpt-5.2 / claude-sonnet-4 / gemini-2.5-pro"}
+                  disabled={loading || loadingModels}
+                  onChange={(next) => onFormChange("defaultTaskModel", next)}
+                />
+              </div>
             </div>
           </section>
 
@@ -201,25 +205,27 @@ export function SettingsControlRoom({
                 <p className="small">{text("自定义复核打分依据。留空则使用内置默认标准；支持 Markdown。", "Customize how the reviewer scores prompts. Leave it empty to use the built-in default. Markdown is supported.")}</p>
               </div>
             </div>
-            <div className="form-grid">
-              <label className="label">
-                {text("全局评分标准覆写", "Global scoring override")}
-                <textarea
-                  className="textarea"
-                  rows={8}
-                  value={form.customRubricMd}
-                  onChange={(event) => onFormChange("customRubricMd", event.target.value)}
-                  placeholder={locale === "zh-CN"
-                    ? "留空表示使用内置默认标准。示例：\n\n# 自定义评分标准 (0-100)\n\n1. 目标清晰度 (20)\n2. 输出契约明确度 (20)\n3. 逻辑闭环 (20)\n4. 可执行性 (20)\n5. 鲁棒性 (20)"
-                    : "Leave empty to use the built-in default. Example:\n\n# Custom scoring standard (0-100)\n\n1. Goal clarity (20)\n2. Output contract (20)\n3. Logical closure (20)\n4. Executability (20)\n5. Robustness (20)"}
-                />
-              </label>
-            </div>
-            {form.customRubricMd ? (
-              <div className="settings-inline-actions">
-                <button className="button ghost" type="button" onClick={() => onFormChange("customRubricMd", "")}>{text("恢复默认", "Restore default")}</button>
+            <div className="section-body-stack compact">
+              <div className="form-grid">
+                <label className="label">
+                  {text("全局评分标准覆写", "Global scoring override")}
+                  <textarea
+                    className="textarea"
+                    rows={8}
+                    value={form.customRubricMd}
+                    onChange={(event) => onFormChange("customRubricMd", event.target.value)}
+                    placeholder={locale === "zh-CN"
+                      ? "留空表示使用内置默认标准。示例：\n\n# 自定义评分标准 (0-100)\n\n1. 目标清晰度 (20)\n2. 输出契约明确度 (20)\n3. 逻辑闭环 (20)\n4. 可执行性 (20)\n5. 鲁棒性 (20)"
+                      : "Leave empty to use the built-in default. Example:\n\n# Custom scoring standard (0-100)\n\n1. Goal clarity (20)\n2. Output contract (20)\n3. Logical closure (20)\n4. Executability (20)\n5. Robustness (20)"}
+                  />
+                </label>
               </div>
-            ) : null}
+              {form.customRubricMd ? (
+                <div className="settings-inline-actions">
+                  <button className="button ghost" type="button" onClick={() => onFormChange("customRubricMd", "")}>{text("恢复默认", "Restore default")}</button>
+                </div>
+              ) : null}
+            </div>
           </section>
 
           <section className="panel settings-panel settings-panel-compact">
@@ -234,26 +240,28 @@ export function SettingsControlRoom({
                 <p className="small">{text("这里保留会直接改变运行结果的默认值：同时运行任务数、复核阈值和默认最大轮数。", "Keep the defaults that directly change runtime behavior here: concurrent jobs, score threshold, and the default round cap.")}</p>
               </div>
             </div>
-            <div className="form-grid">
-              <label className="label">
-                {text("同时运行任务数", "Concurrent jobs")}
-                <input
-                  className="input"
-                  type="number"
-                  min={1}
-                  max={4}
-                  value={form.workerConcurrency}
-                  onChange={(event) => onFormChange("workerConcurrency", Number(event.target.value))}
-                />
-              </label>
-              <label className="label">
-                {text("分数阈值", "Score threshold")}
-                <input className="input" type="number" value={form.scoreThreshold} onChange={(event) => onFormChange("scoreThreshold", Number(event.target.value))} />
-              </label>
-              <label className="label">
-                {text("最大轮数", "Max rounds")}
-                <input className="input" type="number" value={form.maxRounds} onChange={(event) => onFormChange("maxRounds", Number(event.target.value))} />
-              </label>
+            <div className="section-body-stack">
+              <div className="form-grid">
+                <label className="label">
+                  {text("同时运行任务数", "Concurrent jobs")}
+                  <input
+                    className="input"
+                    type="number"
+                    min={1}
+                    max={4}
+                    value={form.workerConcurrency}
+                    onChange={(event) => onFormChange("workerConcurrency", Number(event.target.value))}
+                  />
+                </label>
+                <label className="label">
+                  {text("分数阈值", "Score threshold")}
+                  <input className="input" type="number" value={form.scoreThreshold} onChange={(event) => onFormChange("scoreThreshold", Number(event.target.value))} />
+                </label>
+                <label className="label">
+                  {text("最大轮数", "Max rounds")}
+                  <input className="input" type="number" value={form.maxRounds} onChange={(event) => onFormChange("maxRounds", Number(event.target.value))} />
+                </label>
+              </div>
             </div>
           </section>
         </div>

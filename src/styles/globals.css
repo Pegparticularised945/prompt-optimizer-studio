@@ -407,7 +407,23 @@ html[data-locale="en"] .detail-hero .eyebrow {
 .settings-hero-copy,
 .settings-copy-stack {
   display: grid;
-  gap: 10px;
+  gap: 8px;
+}
+
+.section-head > :first-child,
+.lane-header > :first-child {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.section-body-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.section-body-stack.compact {
+  gap: 12px;
 }
 
 .card-header,
@@ -448,15 +464,15 @@ html[data-locale="en"] .detail-hero .eyebrow {
 .hero-copy,
 .lane-heading {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .control-lane.compact {
-  gap: 12px;
+  gap: 16px;
 }
 
 .control-lane.compact .lane-heading {
-  gap: 6px;
+  gap: 8px;
 }
 
 .control-room-hero .hero-copy {
@@ -866,7 +882,7 @@ html[data-locale="en"] .detail-hero .eyebrow {
 .rationale-inline-block,
 .steering-impact-inline {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   padding: 16px 18px;
   border: 1px solid rgba(72, 50, 27, 0.12);
   border-radius: var(--radius-lg);
@@ -1266,7 +1282,7 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .compact-head {
-  padding-top: 4px;
+  padding-top: 0;
 }
 
 .compact-rubric-fold {
@@ -1492,7 +1508,7 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .settings-connection-strip {
-  gap: 18px;
+  gap: 16px;
 }
 
 .settings-connection-grid {
@@ -1518,7 +1534,6 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .settings-panel-compact .section-head {
-  min-height: 92px;
   align-items: flex-start;
 }
 
@@ -1986,7 +2001,6 @@ html[data-locale="en"] .detail-hero .eyebrow {
 
 .latest-results-grid [data-ui="recent-results-column"] .lane-header,
 .latest-results-grid [data-ui="history-results-column"] .lane-header {
-  min-height: 72px;
   align-items: flex-start;
 }
 
@@ -2044,7 +2058,7 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .history-lane {
-  gap: 18px;
+  gap: 16px;
 }
 
 .history-lane-toolbar {
