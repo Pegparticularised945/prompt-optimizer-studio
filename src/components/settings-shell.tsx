@@ -15,6 +15,7 @@ interface SettingsForm {
   defaultTaskModel: string
   scoreThreshold: number
   maxRounds: number
+  workerConcurrency: number
   customRubricMd: string
 }
 
@@ -30,6 +31,7 @@ const DEFAULT_FORM: SettingsForm = {
   defaultTaskModel: '',
   scoreThreshold: 95,
   maxRounds: 8,
+  workerConcurrency: 2,
   customRubricMd: '',
 }
 
@@ -68,6 +70,7 @@ export function SettingsShell() {
             defaultTaskModel: settingsPayload.settings.defaultOptimizerModel,
             scoreThreshold: settingsPayload.settings.scoreThreshold,
             maxRounds: settingsPayload.settings.maxRounds,
+            workerConcurrency: settingsPayload.settings.workerConcurrency,
             customRubricMd: settingsPayload.settings.customRubricMd ?? '',
           })
           setModels(modelsResponse.ok ? modelsPayload.models : [])
@@ -104,6 +107,7 @@ export function SettingsShell() {
           defaultJudgeModel: form.defaultTaskModel,
           scoreThreshold: form.scoreThreshold,
           maxRounds: form.maxRounds,
+          workerConcurrency: form.workerConcurrency,
           customRubricMd: form.customRubricMd,
         }),
       })
@@ -117,6 +121,7 @@ export function SettingsShell() {
         defaultTaskModel: payload.settings.defaultOptimizerModel,
         scoreThreshold: payload.settings.scoreThreshold,
         maxRounds: payload.settings.maxRounds,
+        workerConcurrency: payload.settings.workerConcurrency,
       }))
       setMessage(text('设置已保存。', 'Settings saved.'))
       setError(null)

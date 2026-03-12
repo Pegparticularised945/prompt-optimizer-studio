@@ -33,6 +33,7 @@ export function SettingsControlRoom({
     defaultTaskModel: string
     scoreThreshold: number
     maxRounds: number
+    workerConcurrency: number
     customRubricMd: string
   }
   models: Array<{ id: string; label: string }>
@@ -46,7 +47,7 @@ export function SettingsControlRoom({
   onTestConnection: () => void
   onRefreshModels: () => void
   onFormChange: (
-    field: "cpamcBaseUrl" | "cpamcApiKey" | "apiProtocol" | "defaultTaskModel" | "scoreThreshold" | "maxRounds" | "customRubricMd",
+    field: "cpamcBaseUrl" | "cpamcApiKey" | "apiProtocol" | "defaultTaskModel" | "scoreThreshold" | "maxRounds" | "workerConcurrency" | "customRubricMd",
     value: string | number,
   ) => void
 }) {
@@ -230,10 +231,21 @@ export function SettingsControlRoom({
                   </span>
                   {text("运行策略", "Runtime policy")}
                 </h2>
-                <p className="small">{text("这里保留会直接改变运行结果的默认值：复核阈值和默认最大轮数。", "Keep only the defaults that directly change runtime behavior here: score threshold and default max rounds.")}</p>
+                <p className="small">{text("这里保留会直接改变运行结果的默认值：同时运行任务数、复核阈值和默认最大轮数。", "Keep the defaults that directly change runtime behavior here: concurrent jobs, score threshold, and the default round cap.")}</p>
               </div>
             </div>
             <div className="form-grid">
+              <label className="label">
+                {text("同时运行任务数", "Concurrent jobs")}
+                <input
+                  className="input"
+                  type="number"
+                  min={1}
+                  max={4}
+                  value={form.workerConcurrency}
+                  onChange={(event) => onFormChange("workerConcurrency", Number(event.target.value))}
+                />
+              </label>
               <label className="label">
                 {text("分数阈值", "Score threshold")}
                 <input className="input" type="number" value={form.scoreThreshold} onChange={(event) => onFormChange("scoreThreshold", Number(event.target.value))} />

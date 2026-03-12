@@ -70,6 +70,7 @@ test('settings routes persist apiProtocol and use it for model discovery plus co
         defaultJudgeModel: 'command-a-03-2025',
         scoreThreshold: 95,
         maxRounds: 8,
+        workerConcurrency: 3,
       }),
     }))
 
@@ -77,9 +78,11 @@ test('settings routes persist apiProtocol and use it for model discovery plus co
     const savePayload = (await saveResponse.json()) as {
       settings: {
         apiProtocol: string
+        workerConcurrency: number
       }
     }
     assert.equal(savePayload.settings.apiProtocol, 'cohere-native')
+    assert.equal(savePayload.settings.workerConcurrency, 3)
 
     const getModelsResponse = await modelsRoute.GET()
     assert.equal(getModelsResponse.status, 200)
@@ -103,6 +106,79 @@ test('settings routes persist apiProtocol and use it for model discovery plus co
     assert.ok(requestedUrls.includes('https://gateway.example.com/v2/models'))
   } finally {
     global.fetch = originalFetch
+    process.chdir(originalCwd)
+    if (originalDbPath === undefined) {
+      delete process.env.PROMPT_OPTIMIZER_DB_PATH
+    } else {
+      process.env.PROMPT_OPTIMIZER_DB_PATH = originalDbPath
+    }
+  }
+})
+
+test('settings route defaults worker concurrency to 2 and persists updates', async () => {
+  const originalCwd = process.cwd()
+  const originalDbPath = process.env.PROMPT_OPTIMIZER_DB_PATH
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'po-settings-concurrency-'))
+  process.env.PROMPT_OPTIMIZER_DB_PATH = path.join(tempDir, 'test.db')
+  process.chdir(tempDir)
+
+  try {
+    const { resetDbForTests } = await import('../src/lib/server/db')
+    resetDbForTests()
+    const settingsRoute = await import('../src/app/api/settings/route')
+
+    const initialResponse = await settingsRoute.GET()
+    assert.equal(initialResponse.status, 200)
+    const initialPayload = (await initialResponse.json()) as { settings: { workerConcurrency: number } }
+    assert.equal(initialPayload.settings.workerConcurrency, 2)
+
+    const saveResponse = await settingsRoute.POST(new Request('http://localhost/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        workerConcurrency: 4,
+      }),
+    }))
+
+    assert.equal(saveResponse.status, 200)
+    const savePayload = (await saveResponse.json()) as { settings: { workerConcurrency: number } }
+    assert.equal(savePayload.settings.workerConcurrency, 4)
+
+    const getResponse = await settingsRoute.GET()
+    assert.equal(getResponse.status, 200)
+    const getPayload = (await getResponse.json()) as { settings: { workerConcurrency: number } }
+    assert.equal(getPayload.settings.workerConcurrency, 4)
+  } finally {
+    process.chdir(originalCwd)
+    if (originalDbPath === undefined) {
+      delete process.env.PROMPT_OPTIMIZER_DB_PATH
+    } else {
+      process.env.PROMPT_OPTIMIZER_DB_PATH = originalDbPath
+    }
+  }
+})
+
+test('settings route preserves an explicit legacy worker concurrency value of 1', async () => {
+  const originalCwd = process.cwd()
+  const originalDbPath = process.env.PROMPT_OPTIMIZER_DB_PATH
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'po-settings-legacy-concurrency-'))
+  process.env.PROMPT_OPTIMIZER_DB_PATH = path.join(tempDir, 'test.db')
+  process.chdir(tempDir)
+
+  try {
+    const { getDb, resetDbForTests } = await import('../src/lib/server/db')
+    resetDbForTests()
+    const db = getDb()
+    db.prepare('UPDATE settings SET worker_concurrency = 1 WHERE id = 1').run()
+    resetDbForTests()
+
+    const settingsRoute = await import('../src/app/api/settings/route')
+    const response = await settingsRoute.GET()
+    assert.equal(response.status, 200)
+
+    const payload = (await response.json()) as { settings: { workerConcurrency: number } }
+    assert.equal(payload.settings.workerConcurrency, 1)
+  } finally {
     process.chdir(originalCwd)
     if (originalDbPath === undefined) {
       delete process.env.PROMPT_OPTIMIZER_DB_PATH

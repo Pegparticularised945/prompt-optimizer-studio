@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       judgePassCount: clampNumber(body.judgePassCount, 1, 5, 3),
       maxRounds: clampNumber(body.maxRounds, 1, 20, 8),
       noImprovementLimit: clampNumber(body.noImprovementLimit, 1, 5, 2),
-      workerConcurrency: clampNumber(body.workerConcurrency, 1, 1, 1),
+      workerConcurrency: clampNumber(body.workerConcurrency, 1, 4, 2),
       conversationPolicy: body.conversationPolicy === 'pooled-3x' ? 'pooled-3x' : 'stateless',
       ...(typeof body.customRubricMd === 'string' ? { customRubricMd: body.customRubricMd } : {}),
     })

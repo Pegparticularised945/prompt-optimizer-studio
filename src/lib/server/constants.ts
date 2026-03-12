@@ -54,7 +54,7 @@ export const DEFAULT_SETTINGS: Omit<AppSettings, 'updatedAt'> = {
   judgePassCount: 3,
   maxRounds: 8,
   noImprovementLimit: 2,
-  workerConcurrency: 1,
+  workerConcurrency: 2,
   conversationPolicy: 'stateless' as ConversationPolicy,
   customRubricMd: '',
 }

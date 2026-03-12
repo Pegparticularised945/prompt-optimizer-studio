@@ -28,7 +28,7 @@ export function getDb() {
       judge_pass_count INTEGER NOT NULL DEFAULT 3,
       max_rounds INTEGER NOT NULL DEFAULT 8,
       no_improvement_limit INTEGER NOT NULL DEFAULT 2,
-      worker_concurrency INTEGER NOT NULL DEFAULT 1,
+      worker_concurrency INTEGER NOT NULL DEFAULT 2,
       conversation_policy TEXT NOT NULL DEFAULT 'stateless',
       updated_at TEXT NOT NULL
     );
