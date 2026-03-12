@@ -166,7 +166,7 @@ export function JobDetailControlRoom({
             <h1>{model.title}</h1>
             <p className="hero-lead">{text('先确认最终结果，再检查目标理解，最后决定是否继续推进任务。', 'Confirm the latest result first, then inspect the goal understanding, and only then decide whether to continue.')}</p>
           </div>
-          <div className="summary-cluster">
+          <div className="summary-cluster detail-summary-cluster">
             <SummaryBadge label={text('状态', 'Status')} value={getJobStatusLabel(model.status, locale)} tone={model.status} />
             <SummaryBadge label={text('任务模型', 'Task model')} value={model.modelsLabel} />
             <SummaryBadge label={text('运行模式', 'Run mode')} value={model.runMode === 'step' ? text('单步', 'Step') : text('自动', 'Auto')} />

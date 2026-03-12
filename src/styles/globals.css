@@ -379,6 +379,11 @@ main {
   gap: 14px;
 }
 
+.detail-summary-cluster {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
 .settings-hero-copy,
 .settings-copy-stack {
   display: grid;
@@ -1364,6 +1369,10 @@ main {
   background: rgba(255, 252, 246, 0.78);
 }
 
+.detail-hero .summary-card {
+  padding: 12px;
+}
+
 .summary-card .summary-value {
   font-size: 1.28rem;
   line-height: 1;
@@ -1597,7 +1606,6 @@ main {
   .settings-grid,
   .settings-connection-grid,
   .understanding-grid,
-  .summary-cluster,
   .control-stage-grid,
   .control-form-layout,
   .active-goal-grid,
@@ -1652,6 +1660,10 @@ main {
   .detail-hero,
   .sidebar-toolbox {
     padding: 18px;
+  }
+
+  .summary-cluster {
+    grid-template-columns: 1fr;
   }
 }
 
