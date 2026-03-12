@@ -259,7 +259,53 @@ export function JobDetailControlRoom({
       </section>
 
       <section className="understanding-stage">
-        <div className="understanding-grid">
+        <div className="understanding-stack">
+          <div className="panel explanation-panel">
+            <div className="section-head">
+              <div>
+                <h2 className="section-title has-icon">
+                  <span className="section-title-icon" data-ui="section-title-icon" aria-hidden="true">
+                    <WandSparkles size={18} />
+                  </span>
+                  {text('提炼解释', 'Condensed explanation')}
+                </h2>
+                <p className="small">{text('先看长期解释，再看这组临时引导会怎样改变下一轮。', 'Read the stable explanation first, then see how the pending steering changes the next round.')}</p>
+              </div>
+            </div>
+
+            <div className="explanation-strip-grid">
+              <div className="explanation-card">
+                <strong>{text('长期解释', 'Stable explanation')}</strong>
+                <p className="small">{model.goalAnchorExplanation.sourceSummary}</p>
+                <details className="fold-card explanation-fold">
+                  <summary>{text('查看提炼依据', 'View rationale')}</summary>
+                  <ul className="list compact-list">
+                    {model.goalAnchorExplanation.rationale.map((item, index) => (
+                      <li key={`goal-rationale-${index}`}>{item}</li>
+                    ))}
+                  </ul>
+                </details>
+              </div>
+
+              {hasPendingSteering ? (
+                <div className="explanation-card steering-impact-card">
+                  <strong>{text('当前这组引导会怎样影响下一轮', 'How this steering batch will affect the next round')}</strong>
+                  <p className="small">{text(`本轮会按当前顺序吸收 ${model.pendingSteeringItems.length} 条引导；如果下一轮把其中内容写进完整提示词，后续轮次会继续受影响。`, `The next round will absorb these ${model.pendingSteeringItems.length} steering items in order. If that round writes them into the full prompt, later rounds will keep inheriting the change.`)}</p>
+                  <details className="fold-card explanation-fold">
+                    <summary>{text('查看影响细节', 'View impact details')}</summary>
+                    <ul className="list compact-list">
+                      {model.pendingSteeringItems.map((item) => (
+                        <li key={`impact-${item.id}`}>{item.text}</li>
+                      ))}
+                      <li>{text('optimizer 会按当前顺序吸收这组引导，再基于完整提示词做最小必要改动。', 'The optimizer absorbs this steering batch in order, then makes only the smallest necessary changes to the full prompt.')}</li>
+                      <li>{text('reviewer 不会看到这些引导原文，只会看到下一轮产出的候选提示词。', 'The reviewer never sees the raw steering. It only sees the candidate prompt produced in the next round.')}</li>
+                    </ul>
+                  </details>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
           <div className="panel understanding-panel">
             <div className="section-head">
               <div>
@@ -276,54 +322,62 @@ export function JobDetailControlRoom({
                 </p>
               </div>
             </div>
-            <div className="active-goal-grid compact-goal-grid">
-              <ReadonlyGoalField label={text('长期目标', 'Stable goal')} value={model.goalAnchor.goal} />
-              <ReadonlyGoalField label={text('长期交付物', 'Stable deliverable')} value={model.goalAnchor.deliverable} />
-              <ReadonlyGoalField label={text('长期边界', 'Stable guardrails')} value={model.goalAnchor.driftGuard.join('\n')} />
-            </div>
 
-            <div className="stable-scoring-block">
-              <div className="section-head compact-head">
-                <div>
-                  <strong>{text('当前评分标准', 'Current scoring standard')}</strong>
-                  <p className="small">{rubricSourceLine}</p>
-                </div>
+            <div className="stable-rules-grid">
+              <div className="active-goal-grid compact-goal-grid">
+                <ReadonlyGoalField label={text('长期目标', 'Stable goal')} value={model.goalAnchor.goal} />
+                <ReadonlyGoalField label={text('长期交付物', 'Stable deliverable')} value={model.goalAnchor.deliverable} />
+                <ReadonlyGoalField label={text('长期边界', 'Stable guardrails')} value={model.goalAnchor.driftGuard.join('\n')} />
               </div>
-              <pre className="pre rubric-pre">{model.effectiveRubricMd}</pre>
-              {canEdit ? (
-                <details className="fold-card rubric-editor-fold">
-                  <summary>{text('编辑任务评分标准', 'Edit task scoring standard')}</summary>
-                  <label className="label">
-                    {text('任务评分标准覆写', 'Task scoring override')}
-                    <textarea
-                      className="textarea"
-                      rows={8}
-                      value={form.customRubricMd}
-                      onChange={(event) => handlers.onCustomRubricChange(event.target.value)}
-                      placeholder={text('留空以跟随配置台。', 'Leave empty to follow settings.')}
-                      disabled={!canEdit}
-                    />
-                  </label>
-                  <div className="inline-actions runtime-save-actions">
-                    <button className="button ghost compact" type="button" onClick={() => handlers.onSaveCustomRubric()} disabled={ui.savingCustomRubric}>
-                      {ui.savingCustomRubric ? text('保存中...', 'Saving...') : text('保存任务评分标准', 'Save task scoring standard')}
-                    </button>
-                    {hasSavedJobRubricOverride ? (
-                      <button
-                        className="button ghost compact"
-                        type="button"
-                        onClick={() => {
-                          handlers.onCustomRubricChange('')
-                          handlers.onSaveCustomRubric('')
-                        }}
-                        disabled={ui.savingCustomRubric}
-                      >
-                        {text('恢复跟随配置台', 'Restore following settings')}
-                      </button>
-                    ) : null}
+
+              <div className="stable-scoring-block">
+                <div className="section-head compact-head">
+                  <div>
+                    <strong>{text('当前评分标准', 'Current scoring standard')}</strong>
+                    <p className="small">{rubricSourceLine}</p>
                   </div>
+                </div>
+
+                <details className="fold-card rubric-preview-fold">
+                  <summary>{text('展开评分标准', 'View scoring standard')}</summary>
+                  <pre className="pre rubric-pre">{model.effectiveRubricMd}</pre>
                 </details>
-              ) : null}
+
+                {canEdit ? (
+                  <details className="fold-card rubric-editor-fold">
+                    <summary>{text('编辑任务评分标准', 'Edit task scoring standard')}</summary>
+                    <label className="label">
+                      {text('任务评分标准覆写', 'Task scoring override')}
+                      <textarea
+                        className="textarea"
+                        rows={8}
+                        value={form.customRubricMd}
+                        onChange={(event) => handlers.onCustomRubricChange(event.target.value)}
+                        placeholder={text('留空以跟随配置台。', 'Leave empty to follow settings.')}
+                        disabled={!canEdit}
+                      />
+                    </label>
+                    <div className="inline-actions runtime-save-actions">
+                      <button className="button ghost compact" type="button" onClick={() => handlers.onSaveCustomRubric()} disabled={ui.savingCustomRubric}>
+                        {ui.savingCustomRubric ? text('保存中...', 'Saving...') : text('保存任务评分标准', 'Save task scoring standard')}
+                      </button>
+                      {hasSavedJobRubricOverride ? (
+                        <button
+                          className="button ghost compact"
+                          type="button"
+                          onClick={() => {
+                            handlers.onCustomRubricChange('')
+                            handlers.onSaveCustomRubric('')
+                          }}
+                          disabled={ui.savingCustomRubric}
+                        >
+                          {text('恢复跟随配置台', 'Restore following settings')}
+                        </button>
+                      ) : null}
+                    </div>
+                  </details>
+                ) : null}
+              </div>
             </div>
 
             <p className="small goal-summary-note">{text('长期规则会持续约束后续轮次；临时引导只影响下一轮，除非你明确保存新的长期规则。', 'Stable rules keep constraining later rounds. Temporary steering only affects the next round unless you explicitly save a new stable rule.')}</p>
@@ -391,48 +445,6 @@ export function JobDetailControlRoom({
                 ) : null}
               </div>
             </details>
-          </div>
-
-          <div className="panel explanation-panel">
-            <div className="section-head">
-              <div>
-                <h2 className="section-title has-icon">
-                  <span className="section-title-icon" data-ui="section-title-icon" aria-hidden="true">
-                    <WandSparkles size={18} />
-                  </span>
-                  {text('提炼解释', 'Condensed explanation')}
-                </h2>
-                <p className="small">{text('先看长期解释，再看这组临时引导会怎样改变下一轮。', 'Read the stable explanation first, then see how the pending steering changes the next round.')}</p>
-              </div>
-            </div>
-            <div className="explanation-card">
-              <strong>{text('长期解释', 'Stable explanation')}</strong>
-              <p className="small">{model.goalAnchorExplanation.sourceSummary}</p>
-              <details className="fold-card explanation-fold">
-                <summary>{text('查看提炼依据', 'View rationale')}</summary>
-                <ul className="list compact-list">
-                  {model.goalAnchorExplanation.rationale.map((item, index) => (
-                    <li key={`goal-rationale-${index}`}>{item}</li>
-                  ))}
-                </ul>
-              </details>
-            </div>
-            {hasPendingSteering ? (
-              <div className="explanation-card steering-impact-card">
-                <strong>{text('当前这组引导会怎样影响下一轮', 'How this steering batch will affect the next round')}</strong>
-                <p className="small">{text(`本轮会按当前顺序吸收 ${model.pendingSteeringItems.length} 条引导；如果下一轮把其中内容写进完整提示词，后续轮次会继续受影响。`, `The next round will absorb these ${model.pendingSteeringItems.length} steering items in order. If that round writes them into the full prompt, later rounds will keep inheriting the change.`)}</p>
-                <details className="fold-card explanation-fold">
-                  <summary>{text('查看影响细节', 'View impact details')}</summary>
-                  <ul className="list compact-list">
-                    {model.pendingSteeringItems.map((item) => (
-                      <li key={`impact-${item.id}`}>{item.text}</li>
-                    ))}
-                    <li>{text('optimizer 会按当前顺序吸收这组引导，再基于完整提示词做最小必要改动。', 'The optimizer absorbs this steering batch in order, then makes only the smallest necessary changes to the full prompt.')}</li>
-                    <li>{text('reviewer 不会看到这些引导原文，只会看到下一轮产出的候选提示词。', 'The reviewer never sees the raw steering. It only sees the candidate prompt produced in the next round.')}</li>
-                  </ul>
-                </details>
-              </div>
-            ) : null}
           </div>
         </div>
       </section>

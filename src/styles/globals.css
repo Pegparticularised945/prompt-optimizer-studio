@@ -282,7 +282,8 @@ main {
 .section-title-icon {
   display: inline-flex;
   align-items: center;
-  opacity: 0.85;
+  color: var(--accent);
+  opacity: 1;
 }
 
 .hero h1,
@@ -402,6 +403,17 @@ main {
   gap: 12px;
 }
 
+.section-head strong {
+  font-family: var(--font-display), serif;
+  letter-spacing: -0.02em;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.section-head .small {
+  color: rgba(92, 78, 73, 0.82);
+}
+
 .nav-row,
 .button-row,
 .inline-actions,
@@ -418,6 +430,14 @@ main {
 .lane-heading {
   display: grid;
   gap: 10px;
+}
+
+.control-lane.compact {
+  gap: 12px;
+}
+
+.control-lane.compact .lane-heading {
+  gap: 6px;
 }
 
 .control-room-hero .hero-copy {
@@ -794,6 +814,54 @@ main {
 .compact-goal-card {
   gap: 8px;
   padding: 16px;
+}
+
+.understanding-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.explanation-strip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.stable-rules-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.stable-scoring-block {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(72, 50, 27, 0.12);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 253, 248, 0.9);
+  align-content: start;
+}
+
+.rubric-preview-fold {
+  display: grid;
+  gap: 12px;
+}
+
+.rubric-preview-fold summary {
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+.rubric-preview-fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.rubric-pre {
+  max-height: 280px;
 }
 
 .goal-summary-note,
@@ -1267,6 +1335,13 @@ main {
   gap: 24px;
 }
 
+@media (min-width: 1101px) {
+  /* Desktop already has the sidebar; avoid duplicating navigation in the detail hero. */
+  .detail-hero .nav-row {
+    display: none;
+  }
+}
+
 .settings-hero {
   gap: 14px;
 }
@@ -1326,12 +1401,12 @@ main {
 }
 
 .settings-panel-compact .section-head {
-  min-height: 108px;
+  min-height: 92px;
   align-items: flex-start;
 }
 
 .settings-panel-compact .small {
-  max-width: 34ch;
+  max-width: 40ch;
 }
 
 .settings-inline-actions {
@@ -1606,6 +1681,8 @@ main {
   .settings-grid,
   .settings-connection-grid,
   .understanding-grid,
+  .explanation-strip-grid,
+  .stable-rules-grid,
   .control-stage-grid,
   .control-form-layout,
   .active-goal-grid,
@@ -1776,7 +1853,7 @@ main {
 
 .latest-results-grid [data-ui="recent-results-column"] .lane-header,
 .latest-results-grid [data-ui="history-results-column"] .lane-header {
-  min-height: 92px;
+  min-height: 72px;
   align-items: flex-start;
 }
 
@@ -1956,6 +2033,10 @@ main {
 
 .submission-station.collapsed {
   gap: 12px;
+}
+
+.submission-station.collapsed > .section-head {
+  align-items: center;
 }
 
 .submission-body {

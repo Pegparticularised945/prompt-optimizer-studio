@@ -32,9 +32,9 @@ test('dashboard partitions active, queued, recent completed, and history jobs', 
     'completed-1',
     'completed-2',
     'completed-3',
+    'completed-4',
   ])
   assert.deepEqual(grouped.history.map((job) => job.id), [
-    'completed-4',
     'failed',
     'cancelled',
   ])

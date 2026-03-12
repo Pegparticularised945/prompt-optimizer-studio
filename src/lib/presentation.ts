@@ -93,8 +93,8 @@ export function partitionDashboardJobs<T extends {
   return {
     active: prioritizeActiveDashboardJobs(active),
     queued,
-    recentCompleted: completed.slice(0, 3),
-    history: [...completed.slice(3), ...history],
+    recentCompleted: completed.slice(0, 4),
+    history: [...completed.slice(4), ...history],
   }
 }
 
