@@ -4,7 +4,8 @@ import {
   ArrowLeft,
   CheckCircle2,
   ChevronDown,
-  Copy,
+  FileOutput,
+  FileText,
   PauseCircle,
   PlayCircle,
   Plus,
@@ -130,6 +131,7 @@ export function JobDetailControlRoom({
   const { locale } = useI18n()
   const text = useLocaleText()
   const canEdit = model.status !== 'completed'
+  const canAdjustStableRules = ['paused', 'manual_review', 'failed'].includes(model.status)
   const canSteer = !['completed', 'cancelled'].includes(model.status)
   const canRestart = ['pending', 'paused', 'failed', 'manual_review', 'cancelled'].includes(model.status)
   const canCancel = !['completed', 'cancelled'].includes(model.status)
@@ -163,7 +165,10 @@ export function JobDetailControlRoom({
         </div>
         <div className="detail-hero-grid">
           <div>
-            <span className="eyebrow detail-stage-label">{text('结果台', 'Result Desk')}</span>
+            <span className="eyebrow detail-stage-label detail-stage-chip">
+              <FileOutput size={15} />
+              {text('结果台', 'Result Desk')}
+            </span>
             <h1>{model.title}</h1>
             <p className="hero-lead">{text('先确认最终结果，再检查目标理解，最后决定是否继续推进任务。', 'Confirm the latest result first, then inspect the goal understanding, and only then decide whether to continue.')}</p>
           </div>
@@ -203,7 +208,7 @@ export function JobDetailControlRoom({
           <div>
             <h2 className="section-title has-icon">
               <span className="section-title-icon" data-ui="section-title-icon" aria-hidden="true">
-                <Copy size={18} />
+                <FileText size={18} />
               </span>
               {text('当前最新完整提示词', 'Current latest full prompt')}
             </h2>
@@ -405,48 +410,48 @@ export function JobDetailControlRoom({
               </div>
             ) : null}
 
-            <details className="anchor-editor-drawer">
-              <summary className="fold-card-summary">
-                <FoldCardSummary
-                  title={canEdit ? text('调整长期规则', 'Adjust stable rules') : text('查看调整草稿', 'View adjustment draft')}
-                  closedLabel={text('按需打开', 'Open when needed')}
-                  openLabel={text('收起', 'Collapse')}
-                />
-              </summary>
-              <div className="anchor-editor-body">
-                <div className="section-head compact-head">
-                  <div>
-                    <strong>{text('编辑草稿', 'Edit draft')}</strong>
-                    <p className="small">{text('这里只是修改草稿。点击保存后，长期规则才会真正更新。未选中的临时引导不会自动写进这里。', 'This is only a working draft. Stable rules update only after you save. Unselected temporary steering will not be written here automatically.')}</p>
-                  </div>
-                  {canEdit ? (
+            {canAdjustStableRules ? (
+              <details className="anchor-editor-drawer">
+                <summary className="fold-card-summary">
+                  <FoldCardSummary
+                    title={text('调整长期规则', 'Adjust stable rules')}
+                    closedLabel={text('按需打开', 'Open when needed')}
+                    openLabel={text('收起', 'Collapse')}
+                  />
+                </summary>
+                <div className="anchor-editor-body">
+                  <div className="section-head compact-head">
+                    <div>
+                      <strong>{text('编辑草稿', 'Edit draft')}</strong>
+                      <p className="small">{text('这里只是修改草稿。点击保存后，长期规则才会真正更新。未选中的临时引导不会自动写进这里。', 'This is only a working draft. Stable rules update only after you save. Unselected temporary steering will not be written here automatically.')}</p>
+                    </div>
                     <button className="button ghost" type="button" onClick={handlers.onSaveGoalAnchor} disabled={ui.savingGoalAnchor}>
                       {ui.savingGoalAnchor ? text('保存中...', 'Saving...') : text('保存长期规则', 'Save stable rules')}
                     </button>
+                  </div>
+                  <div className="form-grid anchor-editor-grid">
+                    <label className="label">
+                      {text('长期目标', 'Stable goal')}
+                      <textarea className="textarea" value={form.goalAnchorGoal} onChange={(event) => handlers.onGoalAnchorGoalChange(event.target.value)} disabled={!canAdjustStableRules} />
+                    </label>
+                    <label className="label">
+                      {text('长期交付物', 'Stable deliverable')}
+                      <textarea className="textarea" value={form.goalAnchorDeliverable} onChange={(event) => handlers.onGoalAnchorDeliverableChange(event.target.value)} disabled={!canAdjustStableRules} />
+                    </label>
+                    <label className="label">
+                      {text('长期边界', 'Stable guardrails')}
+                      <textarea className="textarea" value={form.goalAnchorDriftGuardText} onChange={(event) => handlers.onGoalAnchorDriftGuardChange(event.target.value)} disabled={!canAdjustStableRules} />
+                    </label>
+                  </div>
+                  {form.goalAnchorDraftReady ? (
+                    <div className="goal-anchor-draft-note">
+                      <strong>{text('已把选中项带入长期规则编辑区', 'Selected items were added to the stable-rule editor')}</strong>
+                      <p className="small">{text('现在还只是草稿。点击“保存长期规则”后，选中的条目才会成为长期规则；未选中的条目会继续留在待生效列表。', 'This is still only a draft. Selected items become stable rules only after you save. Unselected items stay in the pending list.')}</p>
+                    </div>
                   ) : null}
                 </div>
-                <div className="form-grid anchor-editor-grid">
-                  <label className="label">
-                    {text('长期目标', 'Stable goal')}
-                    <textarea className="textarea" value={form.goalAnchorGoal} onChange={(event) => handlers.onGoalAnchorGoalChange(event.target.value)} disabled={!canEdit} />
-                  </label>
-                  <label className="label">
-                    {text('长期交付物', 'Stable deliverable')}
-                    <textarea className="textarea" value={form.goalAnchorDeliverable} onChange={(event) => handlers.onGoalAnchorDeliverableChange(event.target.value)} disabled={!canEdit} />
-                  </label>
-                  <label className="label">
-                    {text('长期边界', 'Stable guardrails')}
-                    <textarea className="textarea" value={form.goalAnchorDriftGuardText} onChange={(event) => handlers.onGoalAnchorDriftGuardChange(event.target.value)} disabled={!canEdit} />
-                  </label>
-                </div>
-                {form.goalAnchorDraftReady ? (
-                  <div className="goal-anchor-draft-note">
-                    <strong>{text('已把选中项带入长期规则编辑区', 'Selected items were added to the stable-rule editor')}</strong>
-                    <p className="small">{text('现在还只是草稿。点击“保存长期规则”后，选中的条目才会成为长期规则；未选中的条目会继续留在待生效列表。', 'This is still only a draft. Selected items become stable rules only after you save. Unselected items stay in the pending list.')}</p>
-                  </div>
-                ) : null}
-              </div>
-            </details>
+              </details>
+            ) : null}
           </div>
         </div>
       </section>
@@ -742,7 +747,7 @@ function ReadonlyGoalField({
       {shouldCollapse ? (
         <details className="goal-value-fold" data-ui="goal-value-fold">
           <summary className="fold-card-summary">
-            <FoldCardSummary title={previewGoalValue(value)} closedLabel={expandLabel} openLabel={collapseLabel} />
+            <FoldCardSummary title={label} closedLabel={expandLabel} openLabel={collapseLabel} />
           </summary>
           <div className="active-goal-value">{value}</div>
         </details>
@@ -758,12 +763,6 @@ function shouldCollapseGoalValue(value: string) {
   if (!normalized) return false
   const lineCount = normalized.split('\n').filter(Boolean).length
   return lineCount > 2 || normalized.length > 110
-}
-
-function previewGoalValue(value: string) {
-  const singleLine = value.replace(/\s+/g, ' ').trim()
-  if (singleLine.length <= 88) return singleLine
-  return `${singleLine.slice(0, 88).trimEnd()}…`
 }
 
 function FoldCardSummary({

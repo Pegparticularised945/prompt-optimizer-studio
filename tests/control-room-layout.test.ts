@@ -518,6 +518,25 @@ test('job detail uses disclosure for long stable-rule content instead of a neste
   assert.doesNotMatch(html, /active-goal-scroll/)
 })
 
+test('job detail long stable-rule fold header does not repeat the full guardrail copy', () => {
+  const longGuardModel = makeDetailModel()
+  longGuardModel.goalAnchor = {
+    ...longGuardModel.goalAnchor,
+    driftGuard: [
+      '不要改写用户的原始任务意图；任何补充都必须服务于原目标，而不是把任务扩展成泛泛的提示词教程。',
+      '输出必须保持为可一键复制的完整提示词，不能退化成检查清单、点评摘要或纯建议列表。',
+      '如果需要加入约束、评分或示例，必须明确它们如何帮助用户得到更稳定的最终提示词，而不是增加阅读负担。',
+    ],
+  }
+
+  const html = renderToStaticMarkup(createElement(JobDetailControlRoom, {
+    ...makeDetailProps(),
+    model: longGuardModel,
+  }))
+
+  assert.equal(countOccurrences(html, '不要改写用户的原始任务意图；任何补充都必须服务于原目标，而不是把任务扩展成泛泛的提示词教程。'), 1)
+})
+
 test('job detail moves rationale into stable rules above the stable goal cards', () => {
   const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps()))
 
@@ -658,6 +677,29 @@ test('job detail demotes stable-rule editing into an adjustment action instead o
   assert.doesNotMatch(html, /长期规则内容/)
 })
 
+test('job detail hides stable-rule adjustment drawer after the job is completed', () => {
+  const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps({
+    model: {
+      status: 'completed',
+    },
+  })))
+
+  assert.doesNotMatch(html, /调整长期规则/)
+  assert.doesNotMatch(html, /编辑草稿/)
+  assert.doesNotMatch(html, /保存长期规则/)
+})
+
+test('job detail keeps stable-rule adjustment available for editable states', () => {
+  const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps({
+    model: {
+      status: 'manual_review',
+    },
+  })))
+
+  assert.match(html, /调整长期规则/)
+  assert.match(html, /保存长期规则/)
+})
+
 test('job detail stable rules preview shows job-level scoring override when present', () => {
   const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps({
     model: {
@@ -785,6 +827,9 @@ test('settings control room groups connection, defaults, and active runtime fiel
 
   assert.match(html, /data-ui="settings-page-header"/)
   assert.match(html, /data-ui="settings-connection-form"/)
+  assert.match(html, /data-ui="settings-secondary-layout"/)
+  assert.match(html, /data-ui="settings-rubric-column"/)
+  assert.match(html, /data-ui="settings-side-column"/)
   assert.match(html, /连接/)
   assert.match(html, /默认模型/)
   assert.match(html, /默认任务模型/)
@@ -802,8 +847,9 @@ test('settings control room groups connection, defaults, and active runtime fiel
   assert.equal(countOccurrences(html, '>连接<'), 1)
   assert.equal(countOccurrences(html, '>默认模型<'), 1)
   assert.ok(html.indexOf('>连接<') < html.indexOf('>默认模型<'))
-  assert.ok(html.indexOf('>默认模型<') < html.indexOf('>评分标准<'))
-  assert.ok(html.indexOf('>评分标准<') < html.indexOf('>运行策略<'))
+  assert.ok(html.indexOf('data-ui="settings-rubric-column"') < html.indexOf('>评分标准<'))
+  assert.ok(html.indexOf('data-ui="settings-side-column"') < html.indexOf('>默认模型<'))
+  assert.ok(html.indexOf('>默认模型<') < html.indexOf('>运行策略<'))
   assert.doesNotMatch(html, /接入层/)
   assert.doesNotMatch(html, /模型策略/)
   assert.doesNotMatch(html, /评分规则/)

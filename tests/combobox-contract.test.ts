@@ -11,3 +11,14 @@ test('model alias combobox keeps cmdk highlight state separate from current valu
   assert.doesNotMatch(source, /data-selected=/)
   assert.match(source, /data-current=/)
 })
+
+test('dropdown surfaces keep scroll containment to avoid dragging the whole page', () => {
+  const css = fs.readFileSync(
+    '/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/.worktrees/open-source-hardening/src/styles/globals.css',
+    'utf8',
+  )
+
+  assert.match(css, /\.select-field-content,\s*\.combobox-popover\s*\{[\s\S]*overscroll-behavior:\s*contain;/)
+  assert.match(css, /\.select-field-viewport,\s*\.combobox-list\s*\{[\s\S]*touch-action:\s*pan-y;/)
+  assert.match(css, /\.select-field-viewport,\s*\.combobox-list\s*\{[\s\S]*scrollbar-gutter:\s*stable;/)
+})

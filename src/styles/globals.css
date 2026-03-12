@@ -179,6 +179,14 @@ html[data-locale="en"] .detail-hero .eyebrow {
   letter-spacing: 0.06em;
 }
 
+.detail-stage-chip {
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(231, 90, 99, 0.18);
+  background: rgba(255, 247, 244, 0.8);
+}
+
 .sidebar-nav {
   display: grid;
   gap: 6px;
@@ -486,6 +494,11 @@ html[data-locale="en"] .detail-hero .eyebrow {
   color: var(--ink-soft);
 }
 
+.detail-control-room .label {
+  font-weight: 600;
+  color: var(--ink);
+}
+
 .input,
 .textarea,
 .select {
@@ -564,9 +577,12 @@ html[data-locale="en"] .detail-hero .eyebrow {
 
 .select-field-content,
 .combobox-popover {
-  width: min(max(280px, var(--radix-select-trigger-width, var(--radix-popover-trigger-width))), calc(100vw - 40px));
-  max-height: min(360px, calc(100vh - 120px));
+  width: min(max(320px, var(--radix-select-trigger-width, var(--radix-popover-trigger-width))), calc(100vw - 32px));
+  max-width: 440px;
+  max-height: min(420px, calc(100vh - 96px));
   overflow: hidden;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   border: 1px solid rgba(74, 56, 40, 0.18);
   border-radius: var(--radius-lg);
   background: rgba(255, 252, 246, 0.96);
@@ -576,8 +592,11 @@ html[data-locale="en"] .detail-hero .eyebrow {
 
 .select-field-viewport,
 .combobox-list {
-  max-height: min(360px, calc(100vh - 140px));
+  max-height: min(320px, calc(100vh - 156px));
   overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-gutter: stable;
   padding: 10px;
 }
 
@@ -696,6 +715,10 @@ html[data-locale="en"] .detail-hero .eyebrow {
     color var(--motion-fast) var(--ease-smooth);
 }
 
+.combobox-item {
+  align-items: flex-start;
+}
+
 .select-field-item[data-highlighted],
 .combobox-item[aria-selected="true"] {
   outline: none;
@@ -740,17 +763,22 @@ html[data-locale="en"] .detail-hero .eyebrow {
 .combobox-item-main {
   flex: 1 1 auto;
   font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .combobox-item-sub {
   color: var(--ink-soft);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .combobox-item-create {
   justify-content: space-between;
+}
+
+.combobox-item-create .combobox-item-sub {
+  max-width: 52%;
 }
 
 .textarea {
@@ -878,16 +906,12 @@ html[data-locale="en"] .detail-hero .eyebrow {
 }
 
 .goal-value-fold .fold-card-summary-row {
-  align-items: flex-start;
+  align-items: center;
 }
 
 .goal-value-fold .fold-card-title {
-  display: -webkit-box;
-  overflow: hidden;
   font-size: 0.95rem;
-  line-height: 1.55;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  line-height: 1.45;
   text-align: left;
 }
 
@@ -945,8 +969,8 @@ html[data-locale="en"] .detail-hero .eyebrow {
 
 .stable-scoring-block {
   display: grid;
-  gap: 12px;
-  padding: 18px;
+  gap: 10px;
+  padding: 16px;
   border: 1px solid rgba(72, 50, 27, 0.12);
   border-radius: var(--radius-lg);
   background: rgba(255, 253, 248, 0.9);
@@ -956,7 +980,7 @@ html[data-locale="en"] .detail-hero .eyebrow {
 .rubric-preview-fold,
 .rubric-editor-fold {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .fold-card-toggle {
@@ -1027,20 +1051,37 @@ html[data-locale="en"] .detail-hero .eyebrow {
 .rubric-pre {
   max-height: 280px;
   margin: 0;
-  padding: 0 16px 16px;
+  padding: 0 14px 14px;
 }
 
 .rubric-editor-fold > .label {
-  padding: 0 16px;
+  padding: 0 14px;
 }
 
 .rubric-editor-fold > .inline-actions {
-  padding: 0 16px 16px;
+  padding: 0 14px 14px;
 }
 
 .goal-summary-note,
 .field-note {
   margin: 0;
+}
+
+.rubric-preview-fold .fold-card-summary-row,
+.rubric-editor-fold .fold-card-summary-row {
+  min-height: 48px;
+}
+
+.detail-control-room .section-head strong,
+.detail-control-room .fold-card-title {
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.detail-control-room .section-head .small,
+.detail-control-room .fold-card-summary-meta {
+  color: rgba(92, 78, 73, 0.78);
 }
 
 .explanation-fold {
@@ -1567,6 +1608,20 @@ html[data-locale="en"] .detail-hero .eyebrow {
   align-items: start;
 }
 
+.settings-secondary-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(280px, 0.82fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.settings-rubric-column,
+.settings-side-column {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
 .settings-panel-compact {
   height: 100%;
   align-content: start;
@@ -1866,6 +1921,7 @@ html[data-locale="en"] .detail-hero .eyebrow {
   .detail-hero-grid,
   .control-room-grid,
   .settings-grid,
+  .settings-secondary-layout,
   .settings-connection-grid,
   .understanding-grid,
   .explanation-strip-grid,
