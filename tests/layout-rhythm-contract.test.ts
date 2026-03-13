@@ -20,6 +20,7 @@ test('section rhythm styles avoid fixed header min-height hacks for settings and
 
   assert.match(source, /\.section-body-stack\s*\{/)
   assert.match(source, /\.settings-secondary-layout\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/s)
+  assert.match(source, /\.settings-form\s*\{[^}]*display:\s*grid;[^}]*gap:\s*24px/s)
 })
 
 

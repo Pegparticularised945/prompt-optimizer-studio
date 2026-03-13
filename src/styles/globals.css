@@ -1588,6 +1588,11 @@ html[data-locale="en"] .detail-hero .eyebrow {
   max-width: 34ch;
 }
 
+.settings-form {
+  display: grid;
+  gap: 24px;
+}
+
 .settings-hero h1 {
   font-size: clamp(2rem, 4vw, 3.4rem);
 }
