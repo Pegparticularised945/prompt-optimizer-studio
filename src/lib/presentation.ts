@@ -62,6 +62,59 @@ export function getPromptPreview(latestPrompt: string, maxLength: number = 180) 
   return `${compact.slice(0, maxLength).trimEnd()}...`
 }
 
+export function getDashboardDecisionSummary(job: {
+  status: JobStatus
+  latestPrompt: string
+  errorMessage: string | null
+}, locale: "zh-CN" | "en" = "zh-CN") {
+  const displayError = getJobDisplayError(job.errorMessage, locale)
+
+  switch (job.status) {
+    case "manual_review":
+      return {
+        reason: displayError ?? (
+          isEnglish(locale)
+            ? "This run stopped for review before the next round."
+            : "这一轮已停在人工复核，正在等你确认方向后再继续。"
+        ),
+        nextStep: isEnglish(locale)
+          ? "Check or add steering first, then decide whether to run one more round."
+          : "建议先补充或检查引导，再决定继续一轮。",
+        preview: displayError ? null : getPromptPreview(job.latestPrompt, 88),
+      }
+    case "paused":
+      return {
+        reason: displayError ?? (
+          isEnglish(locale)
+            ? "The job is currently paused and waiting for your decision."
+            : "任务当前已暂停，正在等待你的下一步决定。"
+        ),
+        nextStep: isEnglish(locale)
+          ? "If the direction is right, run one more round; if not, edit steering first."
+          : "如果方向正确就继续一轮；如果要纠偏，先编辑引导。",
+        preview: displayError ? null : getPromptPreview(job.latestPrompt, 88),
+      }
+    case "running":
+      return {
+        reason: isEnglish(locale)
+          ? "The job is running automatically and does not need intervention right now."
+          : "任务正在自动运行，当前不需要你立即介入。",
+        nextStep: isEnglish(locale)
+          ? "Observe the result first before adding more steering."
+          : "建议先观察结果，不要同时追加新的人工引导。",
+        preview: null,
+      }
+    default:
+      return {
+        reason: displayError ?? getPromptPreview(job.latestPrompt, 88),
+        nextStep: isEnglish(locale)
+          ? "Open the details to review the latest full prompt."
+          : "打开详情，查看当前最新完整提示词。",
+        preview: null,
+      }
+  }
+}
+
 export function partitionDashboardJobs<T extends {
   status: JobStatus
 }>(jobs: T[]) {

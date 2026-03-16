@@ -10,7 +10,7 @@
   <a href="https://img.shields.io/github/v/release/XBigRoad/prompt-optimizer-studio?display_name=tag&style=flat-square"><img alt="Latest release" src="https://img.shields.io/github/v/release/XBigRoad/prompt-optimizer-studio?display_name=tag&style=flat-square" /></a>
   <a href="https://img.shields.io/badge/edition-self--hosted-2d6a4f?style=flat-square"><img alt="Self-hosted" src="https://img.shields.io/badge/edition-self--hosted-2d6a4f?style=flat-square" /></a>
   <a href="https://img.shields.io/badge/storage-local%20SQLite-52796f?style=flat-square"><img alt="Local SQLite" src="https://img.shields.io/badge/storage-local%20SQLite-52796f?style=flat-square" /></a>
-  <a href="https://img.shields.io/badge/providers-OpenAI%20compatible%20%7C%20Anthropic%20%7C%20Gemini-f4a261?style=flat-square"><img alt="Provider support" src="https://img.shields.io/badge/providers-OpenAI%20compatible%20%7C%20Anthropic%20%7C%20Gemini-f4a261?style=flat-square" /></a>
+  <a href="https://img.shields.io/badge/providers-OpenAI--compatible%20%7C%20Anthropic%20%7C%20Gemini%20%7C%20Mistral%20%7C%20Cohere-f4a261?style=flat-square"><img alt="Provider support" src="https://img.shields.io/badge/providers-OpenAI--compatible%20%7C%20Anthropic%20%7C%20Gemini%20%7C%20Mistral%20%7C%20Cohere-f4a261?style=flat-square" /></a>
   <a href="LICENSE"><img alt="AGPL-3.0 License" src="https://img.shields.io/badge/license-AGPL--3.0-1d3557?style=flat-square" /></a>
 </p>
 
@@ -20,6 +20,21 @@
 > 当前发布形态：`Self-Hosted / Server Edition（自托管服务端版）`
 >
 > 当前仓库交付的是自托管服务端版。未来可能会有独立的 `Web Local Edition`，但它不属于这次发布内容。
+
+## 当前公开版本（v0.1.2）亮点
+
+- **中英双语界面切换**
+  - 首页、配置台、结果台都支持 `中文 / EN` 切换，便于公开演示和跨语言协作。
+- **结果页原始输入对比**
+  - 可以直接对照 `初始版提示词` 与 `当前最新完整提示词`，不用靠记忆判断是否真的变好。
+- **评分标准可配置**
+  - 支持配置台里的 `全局评分标准覆写`，也支持新任务与任务详情页里的 `任务级评分标准覆写`。
+- **模型接入范围更广**
+  - 除了 OpenAI-compatible、Anthropic、Gemini，还提供 Mistral、Cohere 原生适配，以及 DeepSeek / Kimi / Qwen / GLM / OpenRouter 等常见平台预设。
+- **配置台更接近真实运营场景**
+  - 新增 `快速选择服务商`、`接口协议` 手动覆盖、`同时运行任务数` 配置，以及更稳定的模型搜索式选择器。
+- **控制室与结果台更可操作**
+  - 首页待决策卡片改成更聚焦“下一步动作”的决策卡；任务支持 `完成并归档`、`重新开始` 等收尾动作。
 
 ## 这个项目到底在做什么
 
@@ -64,7 +79,8 @@ flowchart LR
 
 ## 使用入口
 
-- [首个版本 Release](https://github.com/XBigRoad/prompt-optimizer-studio/releases/tag/v0.1.0)
+- [最新 Release：v0.1.2](https://github.com/XBigRoad/prompt-optimizer-studio/releases/tag/v0.1.2)
+- [Release 历史：v0.1.1](https://github.com/XBigRoad/prompt-optimizer-studio/releases/tag/v0.1.1) · [v0.1.0](https://github.com/XBigRoad/prompt-optimizer-studio/releases/tag/v0.1.0)
 - [快速开始](#快速开始)
 - [常见问题](#常见问题)
 - [Docker 自托管文档](docs/deployment/docker-self-hosted.md)
@@ -80,7 +96,7 @@ flowchart LR
 
 ## 页面截图
 
-当前截图基于 `npm run demo:seed` 生成的本地演示数据拍摄。
+当前截图基于当前公开候选版本的本地自托管实例拍摄。
 
 | 任务控制室 | 结果台 | 配置台 |
 | --- | --- | --- |
@@ -137,18 +153,42 @@ curl http://localhost:3000/api/health
 
 应用通过**配置台**完成配置。
 
-前台保持为统一输入：
+当前配置台提供：
 
 - `Base URL`
 - `API Key`
+- `快速选择服务商`
+- `接口协议`（自动判断 / 手动覆盖）
+- `全局评分标准覆写`
 - 默认任务模型别名
-- 当前公开的运行项：`scoreThreshold`、`maxRounds`
+- 默认运行项：`workerConcurrency`、`scoreThreshold`、`maxRounds`
+
+任务层还支持：
+
+- 新建任务时填写 `任务级评分标准覆写`
+- 在结果台直接查看 `当前评分标准`
+- 在任务详情页编辑 `任务级评分标准覆写`
 
 当前支持：
 
 - **OpenAI-compatible**：`GET /models` + `POST /chat/completions`
 - **Anthropic 官方 API**：`GET /v1/models` + `POST /v1/messages`
 - **Gemini 官方 API**：`GET /v1beta/models` + `POST /v1beta/models/{model}:generateContent`
+- **Mistral 官方 API**：`GET /models` + `POST /chat/completions`
+- **Cohere 官方 API**：`GET /v2/models` + `POST /v2/chat`
+
+常见 provider 预设包括：
+
+- `OpenAI`
+- `Anthropic (Claude)`
+- `Google Gemini`
+- `Mistral`
+- `Cohere`
+- `DeepSeek`
+- `Moonshot (Kimi)`
+- `通义千问 (Qwen)`
+- `智谱 (GLM)`
+- `OpenRouter`
 
 常见 `Base URL` 示例：
 
@@ -188,7 +228,11 @@ PROMPT_OPTIMIZER_DB_PATH=/your/custom/path.db
 - **优化过程中可以人工干预吗？**
   - 可以。你可以暂停任务、补充下一轮人工引导、只继续一轮，或者恢复自动运行。
 - **支持哪些模型 / API？**
-  - UI 仍然只填 `Base URL`、`API Key` 和模型别名，后端支持 OpenAI-compatible、Anthropic 官方 API 和 Gemini 官方 API。
+  - 当前公开版支持 OpenAI-compatible、Anthropic、Gemini、Mistral、Cohere，并为 DeepSeek / Kimi / Qwen / GLM / OpenRouter 提供预设入口与协议映射。
+- **可以调整评分规则吗？**
+  - 可以。配置台支持 `全局评分标准覆写`，单个任务也支持 `任务级评分标准覆写`，都接受 Markdown。
+- **可以切换英文界面吗？**
+  - 可以。当前公开版已经提供 `中文 / EN` 切换。
 - **数据存在哪里？**
   - 存在运行这套应用的机器或挂载卷里的 SQLite 数据库中。
 - **为什么使用 AGPL-3.0？**

@@ -75,6 +75,33 @@ test('stable-rule cards use a single-column stack instead of a 2+1 mosaic', () =
   )
 })
 
+test('decision lanes cap the desktop queue width and demote prompt previews to supporting copy', () => {
+  const source = fs.readFileSync(
+    '/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/.worktrees/open-source-hardening/src/styles/globals.css',
+    'utf8',
+  )
+
+  assert.match(
+    source,
+    /\.lane-grid\.decision-lane-grid\s*\{[^}]*grid-template-columns:\s*1fr/s,
+  )
+
+  assert.match(
+    source,
+    /@media\s*\(min-width:\s*980px\)\s*\{[\s\S]*?\.lane-grid\.decision-lane-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/s,
+  )
+
+  assert.match(
+    source,
+    /@media\s*\(min-width:\s*1500px\)\s*\{[\s\S]*?\.lane-grid\.decision-lane-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/s,
+  )
+
+  assert.match(
+    source,
+    /\.supporting-preview\s*\{[^}]*white-space:\s*nowrap;[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;/s,
+  )
+})
+
 test('task scoring editor keeps button actions visibly separated from the textarea', () => {
   const source = fs.readFileSync(
     '/Volumes/1TB_No.1/Dev_Workspace/prompt-optimizer-studio/.worktrees/open-source-hardening/src/styles/globals.css',

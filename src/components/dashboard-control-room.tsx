@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
   formatRunCount,
+  getDashboardDecisionSummary,
   getConversationPolicyLabel,
   getJobDisplayError,
   getJobStatusLabel,
@@ -215,6 +216,7 @@ export function DashboardControlRoom({
         onResumeAuto={onResumeAuto}
         onResumeStep={onResumeStep}
         compact
+        decisionQueue={lane.key === 'attention' || lane.key === 'running'}
       />
     )
   )
@@ -322,6 +324,7 @@ function DashboardLane({
   onResumeStep,
   onRetry = noopDashboardAction,
   compact = false,
+  decisionQueue = false,
   dataUi,
 }: {
   title?: string
@@ -335,6 +338,7 @@ function DashboardLane({
   onResumeStep: (job: DashboardJobView) => Promise<void>
   onRetry?: (job: DashboardJobView) => Promise<void>
   compact?: boolean
+  decisionQueue?: boolean
   dataUi?: string
 }) {
   return (
@@ -345,7 +349,7 @@ function DashboardLane({
           <p className="small">{description}</p>
         </div>
       </div>
-      <motion.div layout className="lane-grid">
+      <motion.div layout className={`lane-grid${decisionQueue ? ' decision-lane-grid' : ''}`}>
         {jobs.length === 0 ? <div className="notice">{emptyMessage}</div> : null}
         {jobs.map((job) => (
           <DashboardJobCard
@@ -604,20 +608,19 @@ function DashboardJobCard({
   const { locale } = useI18n()
   const text = useLocaleText()
   const canAct = job.status === 'manual_review' || job.status === 'paused'
+  const isDecisionCard = canAct || job.status === 'running'
   const canComplete = ['paused', 'manual_review', 'failed'].includes(job.status) && job.currentRound > 0
   const canRestart = !['running', 'completed'].includes(job.status)
-  const secondaryLink =
-    job.status === 'completed'
-      ? {
-          href: `/jobs/${job.id}`,
-          label: text('详情', 'Details'),
-        }
-      : canAct
-        ? {
-            href: `/jobs/${job.id}#next-round-steering`,
-            label: text('编辑引导', 'Edit steering'),
-          }
-        : null
+  const detailLink = {
+    href: `/jobs/${job.id}`,
+    label: job.status === 'completed' ? text('详情', 'Details') : text('打开详情', 'Open details'),
+  }
+  const steeringLink = canAct
+    ? {
+        href: `/jobs/${job.id}#next-round-steering`,
+        label: text('编辑引导', 'Edit steering'),
+      }
+    : null
   const primary:
     | { kind: 'link'; label: string; href: string }
     | { kind: 'action'; label: string; action: () => void; pending: boolean } =
@@ -627,6 +630,93 @@ function DashboardJobCard({
         ? { kind: 'action', label: text('复制最新提示词', 'Copy latest prompt'), action: () => void onCopyPrompt(job), pending: false }
         : { kind: 'link', label: text('打开详情', 'Open details'), href: `/jobs/${job.id}` }
   const hasFooterSecondaryActions = canAct || (primary.kind === 'action' && job.status !== 'completed')
+  const decisionSummary = isDecisionCard ? getDashboardDecisionSummary(job, locale) : null
+
+  if (isDecisionCard && decisionSummary) {
+    return (
+      <motion.article layout className={`control-card decision-card${subdued ? ' subdued' : ''} tone-${job.status}`}>
+        <div className="card-topline">
+          <span className={`status ${job.status}`}>{getJobStatusLabel(job.status, locale)}</span>
+          <span className="meta">{formatDate(job.createdAt, locale)}</span>
+        </div>
+        <h3>{job.title}</h3>
+        <div className="decision-summary" data-ui="decision-summary">
+          <p className="decision-summary-reason" data-ui="decision-summary-reason">{decisionSummary.reason}</p>
+          <p className="decision-summary-next-step" data-ui="decision-summary-next-step">{decisionSummary.nextStep}</p>
+        </div>
+        {decisionSummary.preview ? <p className="prompt-preview supporting-preview">{decisionSummary.preview}</p> : null}
+        <div className="card-metrics compact-metrics decision-metrics">
+          <span>{text('轮次', 'Round')} {job.currentRound}</span>
+          <span>{text('最佳均分', 'Best avg')} {job.bestAverageScore.toFixed(2)}</span>
+          <span>{text('模型', 'Model')} {job.optimizerModel}</span>
+          <span>{getConversationPolicyLabel(job.conversationPolicy, locale)}</span>
+        </div>
+        <div className="card-actions decision-card-actions">
+          {primary.kind === 'link' ? (
+            <Link href={primary.href as Route} className="button primary-action">
+              {primary.label} <ChevronRight size={16} />
+            </Link>
+          ) : (
+            <button className="button primary-action" type="button" onClick={primary.action} disabled={primary.pending}>
+              {primary.pending ? text('处理中...', 'Working...') : primary.label}
+            </button>
+          )}
+          {canAct ? (
+            <div className="decision-secondary-row">
+              {steeringLink ? (
+                <Link href={steeringLink.href as Route} className="button ghost" data-ui="decision-secondary-link">
+                  <span>{steeringLink.label}</span>
+                  <ChevronRight size={16} />
+                </Link>
+              ) : null}
+              <details className="card-more-actions" data-ui="card-more-actions">
+                <summary className="button ghost card-more-summary">
+                  <span>{text('更多操作', 'More actions')}</span>
+                  <ChevronDown size={16} />
+                </summary>
+                <div className="card-more-panel">
+                  <button className="button ghost" type="button" onClick={() => void onResumeAuto(job)} disabled={actionInFlight === `${job.id}:auto`}>
+                    <PlayCircle size={16} /> {actionInFlight === `${job.id}:auto` ? text('处理中...', 'Working...') : text('自动运行', 'Run automatically')}
+                  </button>
+                  <button className="button ghost" type="button" onClick={() => void onCopyPrompt(job)}>
+                    <Copy size={16} /> {text('复制', 'Copy')}
+                  </button>
+                  {canComplete ? (
+                    <ConfirmDialog
+                      title={text('完成并归档？', 'Complete and archive?')}
+                      description={text('这会接受当前最新完整提示词作为最终结果，并把任务移到最新结果 / 历史任务。', 'This accepts the current latest full prompt as the final result and moves the job into latest results/history.')}
+                      confirmText={text('确认完成并归档', 'Confirm completion')}
+                      tone="danger"
+                      disabled={actionInFlight === `${job.id}:complete`}
+                      onConfirm={() => onCompleteTask?.(job)}
+                    >
+                      <button className="button ghost" type="button" disabled={actionInFlight === `${job.id}:complete`}>
+                        <CheckCircle2 size={16} /> {actionInFlight === `${job.id}:complete` ? text('处理中...', 'Working...') : text('完成并归档', 'Complete and archive')}
+                      </button>
+                    </ConfirmDialog>
+                  ) : null}
+                  {canRestart ? (
+                    <ConfirmDialog
+                      title={text('重新开始？', 'Restart from the beginning?')}
+                      description={text('这会清空当前候选稿与历史轮次，从初版提示词重新跑。', 'This clears the current candidates and round history, then restarts from the initial prompt.')}
+                      confirmText={text('确认重新开始', 'Confirm restart')}
+                      tone="danger"
+                      disabled={actionInFlight === `${job.id}:retry`}
+                      onConfirm={() => onRetry?.(job)}
+                    >
+                      <button className="button ghost" type="button" disabled={actionInFlight === `${job.id}:retry`}>
+                        <RefreshCcw size={16} /> {actionInFlight === `${job.id}:retry` ? text('处理中...', 'Working...') : text('重新开始', 'Restart')}
+                      </button>
+                    </ConfirmDialog>
+                  ) : null}
+                </div>
+              </details>
+            </div>
+          ) : null}
+        </div>
+      </motion.article>
+    )
+  }
 
   return (
     <motion.article layout className={`control-card${subdued ? ' subdued' : ''} tone-${job.status}`}>
@@ -634,15 +724,17 @@ function DashboardJobCard({
         <span className={`status ${job.status}`}>{getJobStatusLabel(job.status, locale)}</span>
         <span className="meta">{formatDate(job.createdAt, locale)}</span>
       </div>
-      <div className="card-heading-row">
-        <h3>{job.title}</h3>
-        {secondaryLink ? (
-          <Link href={secondaryLink.href as Route} className="card-inline-link" data-ui="card-secondary-link">
-            <span>{secondaryLink.label}</span>
+      {job.status === 'completed' ? (
+        <div className="card-heading-row">
+          <h3>{job.title}</h3>
+          <Link href={detailLink.href as Route} className="card-inline-link" data-ui="card-secondary-link">
+            <span>{detailLink.label}</span>
             <ChevronRight size={14} />
           </Link>
-        ) : null}
-      </div>
+        </div>
+      ) : (
+        <h3>{job.title}</h3>
+      )}
       <p className="prompt-preview">{getPromptPreview(job.latestPrompt, subdued ? 96 : 140)}</p>
       <div className="card-metrics compact-metrics">
         <span>{text('轮次', 'Round')} {job.currentRound}</span>

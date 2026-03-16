@@ -56,8 +56,14 @@ That path is backed by the named Compose volume mounted at `/app/data`.
 ## Runtime Notes
 
 - `Base URL` and `API Key` are still configured from the Config Desk.
+- The current Config Desk also supports:
+  - quick provider presets
+  - API protocol override
+  - global scoring override
+  - concurrent jobs / score threshold / max rounds
+- Individual jobs can also carry their own scoring override, which helps separate experiments from production runs.
 - Requests are sent from the server container, so this deployment shape is the broadest compatibility path for OpenAI-compatible endpoints.
-- Provider-internal routing details are not exposed in the UI.
+- The current public build also includes an in-app bilingual UI toggle for Chinese and English operators.
 
 ## Update Flow
 

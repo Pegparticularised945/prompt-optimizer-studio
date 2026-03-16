@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   focusDashboardJobs,
+  getDashboardDecisionSummary,
   groupHistoryJobsByTitle,
   partitionDashboardJobs,
   prioritizeActiveDashboardJobs,
@@ -86,6 +87,36 @@ test('history jobs group by normalized title and keep newest run first', () => {
   assert.equal(grouped[1]?.title, '生活管家')
 })
 
+test('manual review summary prefers the humanized stop reason and steering recommendation', () => {
+  const summary = getDashboardDecisionSummary({
+    ...makeJob('manual', 'manual_review', '2026-03-08T09:00:00.000Z'),
+    errorMessage: 'JSON at position 12',
+  })
+
+  assert.match(summary.reason, /结构化结果/)
+  assert.match(summary.reason, /没法继续解析这一轮/)
+  assert.match(summary.nextStep, /先补充或检查引导/)
+})
+
+test('paused summary explains the task is waiting for a decision before the next round', () => {
+  const summary = getDashboardDecisionSummary(
+    makeJob('paused', 'paused', '2026-03-08T09:00:00.000Z'),
+  )
+
+  assert.match(summary.reason, /当前已暂停/)
+  assert.match(summary.nextStep, /继续一轮/)
+  assert.match(summary.nextStep, /编辑引导/)
+})
+
+test('running summary tells the operator to observe before adding more noise', () => {
+  const summary = getDashboardDecisionSummary(
+    makeJob('running', 'running', '2026-03-08T09:00:00.000Z'),
+  )
+
+  assert.match(summary.reason, /正在自动运行/)
+  assert.match(summary.nextStep, /先观察结果/)
+})
+
 function makeJob(
   id: string,
   status: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'manual_review' | 'cancelled',
@@ -98,6 +129,7 @@ function makeJob(
     status,
     currentRound: 1,
     bestAverageScore: 90,
+    latestPrompt: 'Latest prompt preview',
     errorMessage: null,
     createdAt,
     conversationPolicy: 'stateless' as const,

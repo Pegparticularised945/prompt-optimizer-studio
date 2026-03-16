@@ -385,6 +385,10 @@ html[data-locale="en"] .detail-hero .eyebrow {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+.lane-grid.decision-lane-grid {
+  grid-template-columns: 1fr;
+}
+
 .compact-secondary {
   grid-template-columns: 1fr;
 }
@@ -1818,6 +1822,10 @@ html[data-locale="en"] .detail-hero .eyebrow {
   line-height: 1.25;
 }
 
+.decision-card {
+  gap: 14px;
+}
+
 .card-heading-row {
   display: flex;
   align-items: start;
@@ -1865,7 +1873,70 @@ html[data-locale="en"] .detail-hero .eyebrow {
   color: var(--ink-soft);
 }
 
+.decision-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+
 .card-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.decision-card-actions {
+  gap: 12px;
+}
+
+.decision-summary {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(72, 50, 27, 0.12);
+  background: rgba(255, 252, 246, 0.74);
+}
+
+.decision-summary-reason,
+.decision-summary-next-step {
+  margin: 0;
+  line-height: 1.58;
+}
+
+.decision-summary-next-step {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.decision-secondary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.card-more-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.card-more-summary {
+  list-style: none;
+}
+
+.card-more-summary::-webkit-details-marker {
+  display: none;
+}
+
+.card-more-summary svg {
+  transition: transform var(--motion-fast) var(--ease-smooth);
+}
+
+.card-more-actions[open] .card-more-summary svg {
+  transform: rotate(180deg);
+}
+
+.card-more-panel {
   display: grid;
   gap: 10px;
 }
@@ -2275,6 +2346,14 @@ html[data-locale="en"] .detail-hero .eyebrow {
   overflow: hidden;
 }
 
+.supporting-preview {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  font-size: 0.9rem;
+}
+
 .compact-metrics {
   gap: 10px 14px;
 }
@@ -2432,6 +2511,18 @@ html[data-locale="en"] .detail-hero .eyebrow {
   to {
     height: 0;
     opacity: 0;
+  }
+}
+
+@media (min-width: 980px) {
+  .lane-grid.decision-lane-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1500px) {
+  .lane-grid.decision-lane-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

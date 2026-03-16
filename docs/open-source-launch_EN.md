@@ -24,33 +24,51 @@ Prompt Optimizer Studio turns prompt refinement into an operator-friendly pipeli
 - human steering stays inside the loop instead of outside it
 - the final deliverable is the latest full prompt, not a diff log
 - round history, drift checks, and stop rules stay visible
-- self-hosted deployment with local SQLite and Docker support
+- configurable scoring standards at both global and per-job level
+- bilingual operator UI
+- broader provider and model connectivity with self-hosted Docker deployment
 
 ## Release Title
 
-`v0.1.0 - Self-Hosted Prompt Optimization Pipeline`
+`v0.1.2 - Configurable Scoring, Broader Model Coverage, and Bilingual UI`
 
-## Release Notes
+## Release History
 
-Prompt Optimizer Studio is ready for its first public release.
+### v0.1.2
 
 Release shape:
 
-- This release is the **Self-Hosted / Server Edition**.
-- Data is stored on the machine or deployment environment running the app.
+- This release remains the **Self-Hosted / Server Edition**.
+- Data stays on the machine or deployment environment running the app.
 - A separate `Web Local Edition` may come later, but it is not part of this release.
 
 Highlights:
 
-- Automated prompt optimization pipeline: the app keeps iterating round by round instead of stopping at a single rewrite.
-- Final-prompt-first workflow: the latest full prompt stays visible and copyable at all times.
-- Human steering loop: pause a task, add next-round guidance, continue one round, or resume auto.
-- Goal-anchor drift guard: keep optimization aligned with the original task intent.
-- Reviewer isolation: the reviewer sees the current candidate and scoring rules, not historical aggregate issue lists or steering raw text.
-- Multi-provider connectivity: configure `Base URL`, `API Key`, and model alias from the Config Desk while the backend routes to OpenAI-compatible, Anthropic native, or Gemini native protocols.
-- Docker-ready self-hosting: ship with a Dockerfile, Compose path, persistent volume convention, and `/api/health` endpoint.
-- AGPL-3.0-only license: modified hosted versions must make their corresponding source available to users.
+- **Bilingual UI**: the main operator surfaces now switch between `中文 / EN`.
+- **Configurable scoring standards**: the Config Desk supports a global scoring override, while submission and job detail views support task-level scoring overrides in Markdown.
+- **Broader provider coverage**: beyond OpenAI-compatible, Anthropic, and Gemini, the public build now includes Mistral and Cohere native support plus presets for DeepSeek, Kimi, Qwen, GLM, and OpenRouter.
+- **Protocol override**: the Config Desk can now force a provider protocol when auto-detection is not enough.
+- **More complete runtime controls**: concurrent jobs is now configurable alongside threshold and max rounds.
+- **Searchable model picker**: the Control Room, Result Desk, and Config Desk now share a more stable searchable model picker and refined dropdown behavior.
+- **More operational task controls**: decision cards are clearer, and jobs can be completed/archived or restarted from the UI.
+
+### v0.1.1
+
+- Fixed the dashboard crash in environments where `crypto.randomUUID` was unavailable.
+- Added a result comparison mode between the initial prompt and the current latest full prompt.
+- Hardened invalid round-score handling and clarified related error messages.
+- Published a real multi-round demo dataset together with refreshed screenshots and GitHub launch copy.
+
+### v0.1.0
+
+- First public release.
+- Automated prompt optimization pipeline with visible round-by-round progress.
+- Final full prompt stays visible and copyable.
+- Human steering loop with pause, next-round guidance, continue-one-round, and resume-auto controls.
+- Goal-anchor drift guard and reviewer isolation.
+- Docker-ready self-hosted deployment with `/api/health`.
+- AGPL-3.0-only licensing for source-available hosted modifications.
 
 ## Suggested Topics
 
-`prompt-engineering`, `prompt-optimizer`, `automation`, `prompt-pipeline`, `nextjs`, `react`, `typescript`, `sqlite`, `docker`, `openai-compatible`, `anthropic`, `gemini`, `local-first`, `self-hosted`, `developer-tools`, `ai-tooling`
+`prompt-engineering`, `prompt-optimizer`, `automation`, `prompt-pipeline`, `nextjs`, `react`, `typescript`, `sqlite`, `docker`, `openai-compatible`, `anthropic`, `gemini`, `mistral`, `cohere`, `openrouter`, `deepseek`, `bilingual`, `self-hosted`, `developer-tools`, `ai-tooling`

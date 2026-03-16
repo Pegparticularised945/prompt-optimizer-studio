@@ -299,6 +299,64 @@ test('actionable dashboard cards expose complete and restart options alongside t
   assert.match(html, /重新开始/)
 })
 
+test('attention dashboard cards switch to decision summaries and move steering into the action row', () => {
+  const html = renderToStaticMarkup(createElement(DashboardControlRoom, {
+    actionableOnly: false,
+    loading: false,
+    groups: {
+      attention: [{
+        ...makeJob('manual-summary', 'manual_review'),
+        errorMessage: 'JSON at position 12',
+      }],
+      running: [],
+      queued: [],
+      recentCompleted: [],
+      history: [],
+    },
+    stats: { attention: 1, running: 0, queued: 0, recentCompleted: 0, history: 0 },
+    actionInFlight: null,
+    onToggleActionableOnly: () => {},
+    onCopyPrompt: async () => {},
+    onResumeStep: async () => {},
+    onResumeAuto: async () => {},
+  }))
+
+  assert.match(html, /class="lane-grid decision-lane-grid"/)
+  assert.match(html, /data-ui="decision-summary"/)
+  assert.match(html, /data-ui="decision-summary-reason"/)
+  assert.match(html, /data-ui="decision-summary-next-step"/)
+  assert.match(html, /结构化结果/)
+  assert.match(html, /data-ui="decision-secondary-link"/)
+  assert.match(html, /编辑引导/)
+  assert.match(html, /data-ui="card-more-actions"/)
+  assert.doesNotMatch(html, /data-ui="card-secondary-link"/)
+})
+
+test('running dashboard cards keep a summary and one primary detail action', () => {
+  const html = renderToStaticMarkup(createElement(DashboardControlRoom, {
+    actionableOnly: false,
+    loading: false,
+    groups: {
+      attention: [],
+      running: [makeJob('running-summary', 'running')],
+      queued: [],
+      recentCompleted: [],
+      history: [],
+    },
+    stats: { attention: 0, running: 1, queued: 0, recentCompleted: 0, history: 0 },
+    actionInFlight: null,
+    onToggleActionableOnly: () => {},
+    onCopyPrompt: async () => {},
+    onResumeStep: async () => {},
+    onResumeAuto: async () => {},
+  }))
+
+  assert.match(html, /data-ui="decision-summary"/)
+  assert.match(html, /正在自动运行/)
+  assert.match(html, /打开详情/)
+  assert.doesNotMatch(html, /编辑引导/)
+})
+
 test('settings control room moves save action into one shared bar below the compact grid', () => {
   const html = renderToStaticMarkup(createElement(SettingsControlRoom, {
     form: {
