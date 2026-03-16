@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { DashboardControlRoom } from '@/components/dashboard-control-room'
 import { StudioFrame } from '@/components/studio-frame'
 import { focusDashboardJobs, getJobDisplayError, partitionDashboardJobs } from '@/lib/presentation'
+import { createRandomId } from '@/lib/random-id'
 
 type JobStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'manual_review' | 'cancelled'
 
@@ -45,7 +46,7 @@ interface SettingsPayload {
 
 function createEmptyDraft(defaults?: SettingsPayload): DraftJob {
   return {
-    id: crypto.randomUUID(),
+    id: createRandomId('draft'),
     title: '',
     rawPrompt: '',
     optimizerModel: defaults?.defaultOptimizerModel ?? '',
