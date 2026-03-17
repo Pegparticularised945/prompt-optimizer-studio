@@ -62,7 +62,6 @@ export function getJobScoreMeta(job: {
 
   return isEnglish(locale) ? "No score generated yet" : "未产生成绩"
 }
-
 export function getConversationPolicyLabel(policy: ConversationPolicy, locale: "zh-CN" | "en" = "zh-CN") {
   switch (policy) {
     case "stateless":
@@ -314,8 +313,8 @@ export function getJobDisplayError(errorMessage: string | null, locale: "zh-CN" 
 
   if (matchesInfraFailureMessage(errorMessage)) {
     return isEnglish(locale)
-      ? 'This run failed at the request or provider layer. Retry directly; if it keeps happening, check the gateway, model availability, or network connection.'
-      : '本次是在请求或 provider 层失败的。可以直接重试；若频繁出现，再检查网关、模型可用性或网络连通性。'
+      ? "This run failed at the request/provider layer, so no score was generated. Retry directly; if it keeps happening, check the gateway, model availability, or network connectivity."
+      : "本次是请求层失败，系统尚未产生成绩。可直接重试；若频繁出现，再看网关、模型可用性或网络连通性。"
   }
 
   return errorMessage

@@ -86,7 +86,7 @@ test('display error maps generic infra failures into a retryable explanation', a
 
   assert.equal(
     getJobDisplayError('fetch failed: ETIMEDOUT'),
-    '本次是在请求或 provider 层失败的。可以直接重试；若频繁出现，再检查网关、模型可用性或网络连通性。',
+    '本次是请求层失败，系统尚未产生成绩。可直接重试；若频繁出现，再看网关、模型可用性或网络连通性。',
   )
 })
 
@@ -95,6 +95,6 @@ test('display error maps raw gateway timeout HTML into a retryable infra explana
 
   assert.equal(
     getJobDisplayError('模型请求失败 (504): <!DOCTYPE html><title>rawchat.cn | 504: Gateway time-out</title>'),
-    '本次是在请求或 provider 层失败的。可以直接重试；若频繁出现，再检查网关、模型可用性或网络连通性。',
+    '本次是请求层失败，系统尚未产生成绩。可直接重试；若频繁出现，再看网关、模型可用性或网络连通性。',
   )
 })
