@@ -277,9 +277,9 @@ Recommended documentation structure:
   - describe `Web Local Edition` as planned.
 - `docs/open-source-launch.md`
   - keep GitHub release/about copy aligned with the same truth.
-- `docs/plans/2026-03-09-web-local-edition-design.md`
+- `.ops/plans/2026-03-09-web-local-edition-design.md`
   - continue as the focused design for browser-local behavior.
-- `docs/plans/2026-03-09-multi-deployment-strategy-design.md`
+- `.ops/plans/2026-03-09-multi-deployment-strategy-design.md`
   - serve as the master deployment strategy.
 - future deployment docs:
   - `docs/deployment/docker-self-hosted.md`

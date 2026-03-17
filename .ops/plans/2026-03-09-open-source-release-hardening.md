@@ -64,11 +64,11 @@ git commit -m "fix: vendor default prompt pack for public release"
 
 **Files:**
 - Delete: `docs/HANDOFF_2026-03-08.md`
-- Modify: `docs/plans/2026-03-09-multi-deployment-strategy.md`
-- Modify: `docs/plans/2026-03-08-final-prompt-manual-steering.md`
-- Modify: `docs/plans/2026-03-08-goal-anchor-assisted-generation.md`
-- Modify: `docs/plans/2026-03-08-goal-anchor-explanation.md`
-- Modify: other `docs/plans/*.md` files that still expose absolute machine paths or `worktrees` references
+- Modify: `.ops/plans/2026-03-09-multi-deployment-strategy.md`
+- Modify: `.ops/plans/2026-03-08-final-prompt-manual-steering.md`
+- Modify: `.ops/plans/2026-03-08-goal-anchor-assisted-generation.md`
+- Modify: `.ops/plans/2026-03-08-goal-anchor-explanation.md`
+- Modify: other `.ops/plans/*.md` files that still expose absolute machine paths or `worktrees` references
 
 **Step 1: Write the failing docs hygiene check**
 

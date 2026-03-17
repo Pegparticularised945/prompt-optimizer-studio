@@ -21,12 +21,12 @@ Verification:
 - 文档整理任务，仅改 docs，未运行 `npm run check`
 
 Files changed:
-- `docs/SESSION_STATE.md`
-- `docs/TASKS.md`
-- `docs/HANDOFF_LOG.md`
+- `.ops/SESSION_STATE.md`
+- `.ops/TASKS.md`
+- `.ops/HANDOFF_LOG.md`
 
 Next:
-- 下一位先读 `docs/SESSION_STATE.md`
+- 下一位先读 `.ops/SESSION_STATE.md`
 - 按 `V0.2-01` 定稿评测策略配置化方案，再进入代码实现
 
 ---
@@ -45,10 +45,10 @@ Key decisions:
 - Release 继续使用 GitHub Releases 保存每个版本，后续再补自托管/Docker 资产包
 
 Files changed:
-- `docs/plans/2026-03-11-provider-coverage-and-release-strategy-design.md`
-- `docs/TASKS.md`
-- `docs/SESSION_STATE.md`
-- `docs/HANDOFF_LOG.md`
+- `.ops/plans/2026-03-11-provider-coverage-and-release-strategy-design.md`
+- `.ops/TASKS.md`
+- `.ops/SESSION_STATE.md`
+- `.ops/HANDOFF_LOG.md`
 
 Verification:
 - 设计/文档任务，未运行 `npm run check`
@@ -159,9 +159,9 @@ Files changed (high signal):
 - `src/components/settings-control-room.tsx`
 - `src/styles/globals.css`
 - `tests/control-room-layout.test.ts`
-- `docs/TASKS.md`
-- `docs/SESSION_STATE.md`
-- `docs/HANDOFF_LOG.md`
+- `.ops/TASKS.md`
+- `.ops/SESSION_STATE.md`
+- `.ops/HANDOFF_LOG.md`
 
 Next:
 - 继续 `V0.2-05`：README / 开源发布页 / About / Release 文案统一收口

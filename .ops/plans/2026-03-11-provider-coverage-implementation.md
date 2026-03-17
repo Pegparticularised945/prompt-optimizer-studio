@@ -327,9 +327,9 @@ git commit -m "feat: add api protocol selector to settings"
 ### Task 5: 集成验证与文档同步
 
 **Files:**
-- Modify: `docs/TASKS.md`
-- Modify: `docs/SESSION_STATE.md`
-- Modify: `docs/HANDOFF_LOG.md`
+- Modify: `.ops/TASKS.md`
+- Modify: `.ops/SESSION_STATE.md`
+- Modify: `.ops/HANDOFF_LOG.md`
 - Optional: `docs/open-source-launch.md`
 
 **Step 1: Run focused test suite**
@@ -367,6 +367,6 @@ Expected:
 **Step 4: Commit**
 
 ```bash
-git add docs/TASKS.md docs/SESSION_STATE.md docs/HANDOFF_LOG.md docs/open-source-launch.md
+git add .ops/TASKS.md .ops/SESSION_STATE.md .ops/HANDOFF_LOG.md docs/open-source-launch.md
 git commit -m "docs: record provider coverage implementation handoff"
 ```

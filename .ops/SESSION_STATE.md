@@ -38,7 +38,7 @@ blockers:
 notes:
 - "2026-03-08 的 handoff 仍保留为历史背景，但从现在开始以 `TASKS.md / SESSION_STATE.md / HANDOFF_LOG.md` 为持续更新三件套。"
 - "已把 `/Volumes/1TB_No.1/Mac Mini/提示词优化流水线.md` 里的三项待办同步进项目任务板。"
-- "2026-03-11 已新增设计文档：`docs/plans/2026-03-11-provider-coverage-and-release-strategy-design.md`。"
+- "2026-03-11 已新增设计文档：`.ops/plans/2026-03-11-provider-coverage-and-release-strategy-design.md`。"
 - "已完成 V0.2-02：新增 apiProtocol（自动/手动协议）并扩展 provider adapter 覆盖 Mistral/Cohere；OpenAI-compatible 覆盖 Kimi/Qwen/GLM/DeepSeek 等平台。"
 - "已完成 V0.2-03：引入 Radix + cmdk，模型选择器升级为可搜索 Combobox；首页改为 Tabs 并把历史任务并到最新结果右侧；危险操作加入确认弹窗；侧栏修复滚动。"
 - "已完成 V0.2-04：新增“完成并归档”动作（/api/jobs/[id]/complete），允许在 paused/manual_review/failed 状态接受最新候选稿为最终结果，并清理运行态残留字段。"

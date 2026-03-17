@@ -236,7 +236,7 @@ git commit -m "feat: scaffold web local storage layer"
 - Create: `src/components/web-local-app.tsx`
 - Create: `src/app/web-local/page.tsx`
 - Modify: `README.md`
-- Modify: `docs/plans/2026-03-09-web-local-edition-design.md`
+- Modify: `.ops/plans/2026-03-09-web-local-edition-design.md`
 - Test: `tests/web-local-entry.test.ts`
 
 **Step 1: Write the failing test**
@@ -263,7 +263,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add src/components/web-local-app.tsx src/app/web-local/page.tsx README.md docs/plans/2026-03-09-web-local-edition-design.md tests/web-local-entry.test.ts
+git add src/components/web-local-app.tsx src/app/web-local/page.tsx README.md .ops/plans/2026-03-09-web-local-edition-design.md tests/web-local-entry.test.ts
 git commit -m "feat: add experimental web local entry"
 ```
 

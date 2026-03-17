@@ -30,15 +30,15 @@
 - 把用户刚确认的 v0.2 待办同步进项目节奏
 
 验收：
-- [x] 建立 `docs/TASKS.md`
-- [x] 建立 `docs/SESSION_STATE.md`
-- [x] 建立 `docs/HANDOFF_LOG.md`
+- [x] 建立 `.ops/TASKS.md`
+- [x] 建立 `.ops/SESSION_STATE.md`
+- [x] 建立 `.ops/HANDOFF_LOG.md`
 - [x] 已同步当前 v0.2 核心待办与约束
 
 Work files:
-- `docs/TASKS.md`
-- `docs/SESSION_STATE.md`
-- `docs/HANDOFF_LOG.md`
+- `.ops/TASKS.md`
+- `.ops/SESSION_STATE.md`
+- `.ops/HANDOFF_LOG.md`
 
 ### PLAN-2026-03-11-API-RELEASE（PLANNER / 广覆盖 API 接入与 Release 分发策略定稿）✅
 
@@ -53,9 +53,9 @@ Work files:
 - [x] 已给出 v0.2 的优先级重排建议
 
 Work files:
-- `docs/plans/2026-03-11-provider-coverage-and-release-strategy-design.md`
-- `docs/TASKS.md`
-- `docs/SESSION_STATE.md`
+- `.ops/plans/2026-03-11-provider-coverage-and-release-strategy-design.md`
+- `.ops/TASKS.md`
+- `.ops/SESSION_STATE.md`
 
 ---
 
@@ -75,7 +75,7 @@ Work files:
 - [x] 设置页文案更新为“OpenAI-compatible + 多家官方原生接口”
 
 建议 work files:
-- `docs/plans/2026-03-11-provider-coverage-and-release-strategy-design.md`
+- `.ops/plans/2026-03-11-provider-coverage-and-release-strategy-design.md`
 - `src/lib/server/model-adapter.ts`
 - `src/app/api/settings/route.ts`
 
