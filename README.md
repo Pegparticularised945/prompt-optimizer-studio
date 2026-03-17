@@ -9,49 +9,41 @@
 <p align="center">
   <a href="https://img.shields.io/github/v/release/XBigRoad/prompt-optimizer-studio?display_name=tag&style=flat-square"><img alt="Latest release" src="https://img.shields.io/github/v/release/XBigRoad/prompt-optimizer-studio?display_name=tag&style=flat-square" /></a>
   <a href="https://img.shields.io/badge/edition-self--hosted-2d6a4f?style=flat-square"><img alt="Self-hosted" src="https://img.shields.io/badge/edition-self--hosted-2d6a4f?style=flat-square" /></a>
-  <a href="https://img.shields.io/badge/storage-local%20SQLite-52796f?style=flat-square"><img alt="Local SQLite" src="https://img.shields.io/badge/storage-local%20SQLite-52796f?style=flat-square" /></a>
-  <a href="https://img.shields.io/badge/providers-OpenAI--compatible%20%7C%20Anthropic%20%7C%20Gemini%20%7C%20Mistral%20%7C%20Cohere-f4a261?style=flat-square"><img alt="Provider support" src="https://img.shields.io/badge/providers-OpenAI--compatible%20%7C%20Anthropic%20%7C%20Gemini%20%7C%20Mistral%20%7C%20Cohere-f4a261?style=flat-square" /></a>
+  <a href="https://img.shields.io/badge/providers-openai--compatible%20%2B%20more-f4a261?style=flat-square"><img alt="Multi-provider support" src="https://img.shields.io/badge/providers-openai--compatible%20%2B%20more-f4a261?style=flat-square" /></a>
   <a href="LICENSE"><img alt="AGPL-3.0 License" src="https://img.shields.io/badge/license-AGPL--3.0-1d3557?style=flat-square" /></a>
 </p>
 
-一个强调自动化流水线、但不把人排除在外的提示词优化工作台。
-你先给出初版提示词，系统再按轮次自动优化；如果中途发现偏题，你可以随时暂停、补充引导、继续推进，最后得到的是可以直接复制的高质量完整提示词，而不是一堆 patch 说明。
+一个强调自动化流水线、但不把人排除在外的提示词优化工作台。✨ 它把提示词优化从“一次性改写”变成“可暂停、可继续、可复核”的自动化流程。
+给出初版 prompt，系统会按轮次自动优化；如果中途发现偏题，你可以随时暂停、补充引导、继续推进，最后拿到可直接复制的完整 prompt。
 
-> 当前发布形态：`Self-Hosted / Server Edition（自托管服务端版）`
->
-> 当前仓库交付的是自托管服务端版。未来可能会有独立的 `Web Local Edition`，但它不属于这次发布内容。
+> 当前公开仓库交付的是 `Self-Hosted / Server Edition（自托管服务端版）`。
 
-## 当前公开版本（v0.1.2）亮点
+<p align="center">
+  <a href="#你可以用它做什么"><strong>✨ 你可以用它做什么</strong></a> ·
+  <a href="#工作流程一眼看懂"><strong>🔄 工作流程</strong></a> ·
+  <a href="#开始使用"><strong>🚀 开始使用</strong></a> ·
+  <a href="#页面截图"><strong>🖼️ 页面截图</strong></a> ·
+  <a href="docs/deployment/docker-self-hosted.md"><strong>🐳 Docker 自托管</strong></a> ·
+  <a href="https://github.com/XBigRoad/prompt-optimizer-studio/releases"><strong>Releases</strong></a>
+</p>
 
-- **中英双语界面切换**
-  - 首页、配置台、结果台都支持 `中文 / EN` 切换，便于公开演示和跨语言协作。
-- **结果页原始输入对比**
-  - 可以直接对照 `初始版提示词` 与 `当前最新完整提示词`，不用靠记忆判断是否真的变好。
-- **评分标准可配置**
-  - 支持配置台里的 `全局评分标准覆写`，也支持新任务与任务详情页里的 `任务级评分标准覆写`。
-- **模型接入范围更广**
-  - 除了 OpenAI-compatible、Anthropic、Gemini，还提供 Mistral、Cohere 原生适配，以及 DeepSeek / Kimi / Qwen / GLM / OpenRouter 等常见平台预设。
-- **配置台更接近真实运营场景**
-  - 新增 `快速选择服务商`、`接口协议` 手动覆盖、`同时运行任务数` 配置，以及更稳定的模型搜索式选择器。
-- **控制室与结果台更可操作**
-  - 首页待决策卡片改成更聚焦“下一步动作”的决策卡；任务支持 `完成并归档`、`重新开始` 等收尾动作。
+## 你可以用它做什么
 
-## 这个项目到底在做什么
+✨ 如果你要的是“最终能直接用的 prompt”，而不是 patch 展示页，这一块最重要。
 
 很多 Prompt Optimizer 更像“改动展示器”：它们重点给你看 diff、patch 或内部修改说明。
 
-`Prompt Optimizer Studio` 想做的是另一件事：
+`Prompt Optimizer Studio` 更关心另一件事：**把提示词优化做成一条可运行、可人工接管、最终能交付完整 prompt 的流水线。**
 
-- **自动化、多轮、流水线式优化提示词**
-  - optimizer 和 reviewer 会持续按轮次推进，直到达到目标或用完轮数预算。
-- **人工始终可以介入**
-  - 你可以暂停任务、补充下一轮人工引导、继续一轮，或者恢复自动运行，而不是被迫从头再来。
-- **最终交付物始终是完整提示词**
-  - 当前最新提示词一直可见、可复制、可直接使用。
-- **过程不是黑盒**
-  - 你可以看到轮次历史、偏题诊断和停止条件，而不是只能相信系统“它自己会变好”。
+| 你的需求 | Prompt Optimizer Studio 怎么做 |
+| --- | --- |
+| 不想只看 patch | 始终保留并展示 `当前最新完整提示词`，而不是只给 diff 或 patch |
+| 希望自动多轮推进 | optimizer / reviewer 按轮次自动优化，直到达标或触发停止规则 |
+| 担心跑偏但又想能人工接管 | 支持暂停、补充下一轮引导、只继续一轮、恢复自动运行，并用 `goalAnchor` + drift checks 降低偏题 |
 
 ## 工作流程一眼看懂
+
+🔄 从初版 prompt 到最终完整 prompt，主路径只有这一条：
 
 ```mermaid
 flowchart LR
@@ -66,24 +58,29 @@ flowchart LR
     E -- 是 --> H[复制最终完整提示词]
 ```
 
+## 开始使用
+
+🚀 如果你现在就想开始，先看这几个入口就够了：
+
+| 我现在想做什么 | 入口 |
+| --- | --- |
+| 本地跑起来 | [快速开始](#快速开始) |
+| 用 Docker 自托管 | [Docker 自托管文档](docs/deployment/docker-self-hosted.md) |
+| 查看发布包与更新记录 | [Releases](https://github.com/XBigRoad/prompt-optimizer-studio/releases) |
+| 查看常见问题 | [常见问题](#常见问题) |
+
+更多信息： [配置方式](#配置方式) · [页面截图](#页面截图)
+
 ## 为什么它和别的工具不一样
 
 - **完整提示词优先**
   - 重点不是给你看改了哪里，而是把你真正要拿去用的 prompt 直接交出来。
-- **人工在回路中**
-  - 人工干预不是补丁能力，而是产品主路径的一部分。
-- **自动跑多轮，但停止逻辑是可见的**
+- **人工介入是主路径，不是补丁能力**
+  - 跑偏时可以暂停、补引导、继续一轮，或者恢复自动运行，而不是被迫从头重来。
+- **自动多轮推进，但停止逻辑是可见的**
   - 它会持续运行到达标，或者停在你设定的轮数上限，而不是黑盒乱跑。
 - **尽量减少越优化越偏题**
   - `goalAnchor`、drift labels 和 reviewer 隔离一起工作，尽量把方向拉回原始目标。
-
-## 使用入口
-
-- [最新 Release：v0.1.2](https://github.com/XBigRoad/prompt-optimizer-studio/releases/tag/v0.1.2)
-- [Release 历史：v0.1.1](https://github.com/XBigRoad/prompt-optimizer-studio/releases/tag/v0.1.1) · [v0.1.0](https://github.com/XBigRoad/prompt-optimizer-studio/releases/tag/v0.1.0)
-- [快速开始](#快速开始)
-- [常见问题](#常见问题)
-- [Docker 自托管文档](docs/deployment/docker-self-hosted.md)
 
 ## 项目文档
 

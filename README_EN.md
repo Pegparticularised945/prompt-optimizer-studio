@@ -9,49 +9,41 @@
 <p align="center">
   <a href="https://img.shields.io/github/v/release/XBigRoad/prompt-optimizer-studio?display_name=tag&style=flat-square"><img alt="Latest release" src="https://img.shields.io/github/v/release/XBigRoad/prompt-optimizer-studio?display_name=tag&style=flat-square" /></a>
   <a href="https://img.shields.io/badge/edition-self--hosted-2d6a4f?style=flat-square"><img alt="Self-hosted" src="https://img.shields.io/badge/edition-self--hosted-2d6a4f?style=flat-square" /></a>
-  <a href="https://img.shields.io/badge/storage-local%20SQLite-52796f?style=flat-square"><img alt="Local SQLite" src="https://img.shields.io/badge/storage-local%20SQLite-52796f?style=flat-square" /></a>
-  <a href="https://img.shields.io/badge/providers-OpenAI--compatible%20%7C%20Anthropic%20%7C%20Gemini%20%7C%20Mistral%20%7C%20Cohere-f4a261?style=flat-square"><img alt="Provider support" src="https://img.shields.io/badge/providers-OpenAI--compatible%20%7C%20Anthropic%20%7C%20Gemini%20%7C%20Mistral%20%7C%20Cohere-f4a261?style=flat-square" /></a>
+  <a href="https://img.shields.io/badge/providers-openai--compatible%20%2B%20more-f4a261?style=flat-square"><img alt="Multi-provider support" src="https://img.shields.io/badge/providers-openai--compatible%20%2B%20more-f4a261?style=flat-square" /></a>
   <a href="LICENSE"><img alt="AGPL-3.0 License" src="https://img.shields.io/badge/license-AGPL--3.0-1d3557?style=flat-square" /></a>
 </p>
 
-Automated, pipeline-style prompt optimization for people who still want control.
-Draft a prompt, let the system iterate round by round, pause to steer when needed, and end with a copy-ready final full prompt instead of a patch log.
+Automated, pipeline-style prompt optimization for people who still want control. ✨ It turns one-off prompt rewriting into a pauseable, steerable, multi-round workflow.
+Start from a draft prompt, let the system iterate round by round, and step in whenever the run drifts so you end with a copy-ready full prompt instead of a patch log.
 
-> Current release: `Self-Hosted / Server Edition`
->
-> This repository ships the self-hosted server edition today. A separate `Web Local Edition` may come later, but it is not part of this release.
+> This repository currently ships the `Self-Hosted / Server Edition`.
 
-## Current Public Release (v0.1.2)
+<p align="center">
+  <a href="#what-you-can-use-it-for"><strong>✨ What It Does</strong></a> ·
+  <a href="#how-it-works"><strong>🔄 Workflow</strong></a> ·
+  <a href="#start-here"><strong>🚀 Start Here</strong></a> ·
+  <a href="#screenshots"><strong>🖼️ Screenshots</strong></a> ·
+  <a href="docs/deployment/docker-self-hosted_EN.md"><strong>🐳 Docker Self-Hosted</strong></a> ·
+  <a href="https://github.com/XBigRoad/prompt-optimizer-studio/releases"><strong>Releases</strong></a>
+</p>
 
-- **Bilingual operator UI**
-  - The Control Room, Config Desk, and Result Desk now switch between `中文 / EN` in-app.
-- **Result comparison mode**
-  - You can compare the `initial prompt` against the `current latest full prompt` directly inside the Result Desk.
-- **Configurable scoring standards**
-  - The app now supports both a global scoring override and per-job scoring overrides using Markdown.
-- **Broader model and provider coverage**
-  - In addition to OpenAI-compatible, Anthropic, and Gemini, the public build now includes Mistral and Cohere native adapters plus presets for DeepSeek, Kimi, Qwen, GLM, and OpenRouter.
-- **A more operational Config Desk**
-  - The desk now exposes provider presets, protocol override, concurrent jobs, and a more stable searchable model picker.
-- **More decisive task controls**
-  - The Control Room is more action-oriented, and jobs can now be completed/archived or restarted from the UI.
+## What You Can Use It For
 
-## Why This Project Exists
+✨ If what you really want is a prompt you can copy and use, this is the section that matters.
 
 Most prompt optimizers stop at showing diffs, patch fragments, or internal reasoning.
 
 `Prompt Optimizer Studio` is built around a different promise:
 
-- **Automated prompt optimization pipeline**
-  - The optimizer and reviewer keep iterating until the target is reached or the round budget is exhausted.
-- **Human steering stays in the loop**
-  - Pause a task, add next-round guidance, continue one round, or resume auto without restarting from scratch.
-- **The final artifact is the full prompt**
-  - The latest prompt is always visible, copyable, and ready to use.
-- **The process stays inspectable**
-  - You can review round history, drift diagnostics, and stop conditions instead of trusting a black box.
+| What you need | How Prompt Optimizer Studio helps |
+| --- | --- |
+| Stop reading patch fragments | It keeps the `latest full prompt` visible and copyable instead of only showing diffs |
+| Want automatic multi-round improvement | The optimizer and reviewer keep iterating until they pass or hit a stop rule |
+| Need steering when the run drifts | You can pause, add next-round guidance, continue one round, or resume auto, with `goalAnchor` + drift checks helping keep direction |
 
 ## How It Works
+
+🔄 From the first draft to the final full prompt, the main path is just this:
 
 ```mermaid
 flowchart LR
@@ -66,6 +58,19 @@ flowchart LR
     E -- Yes --> H[Copy the final full prompt]
 ```
 
+## Start Here
+
+🚀 If you want to get started right now, these are the only links you need first:
+
+| What you want to do now | Entry |
+| --- | --- |
+| Run it locally | [Quick Start](#quick-start) |
+| Self-host with Docker | [Docker Self-Hosted Guide](docs/deployment/docker-self-hosted_EN.md) |
+| Check release packages and updates | [Releases](https://github.com/XBigRoad/prompt-optimizer-studio/releases) |
+| Read common questions | [FAQ](#faq) |
+
+More: [Configuration](#configuration) · [Screenshots](#screenshots)
+
 ## What Makes It Feel Different
 
 - **Full prompt first**
@@ -76,14 +81,6 @@ flowchart LR
   - Runs keep going until they pass the target or hit the configured round limits.
 - **Intent protection**
   - `goalAnchor`, drift labels, and reviewer isolation help reduce silent prompt drift.
-
-## Entry Points
-
-- [Latest Release: v0.1.2](https://github.com/XBigRoad/prompt-optimizer-studio/releases/tag/v0.1.2)
-- [Release history: v0.1.1](https://github.com/XBigRoad/prompt-optimizer-studio/releases/tag/v0.1.1) · [v0.1.0](https://github.com/XBigRoad/prompt-optimizer-studio/releases/tag/v0.1.0)
-- [Quick Start](#quick-start)
-- [FAQ](#faq)
-- [Docker Self-Hosted Guide](docs/deployment/docker-self-hosted_EN.md)
 
 ## Project Docs
 
