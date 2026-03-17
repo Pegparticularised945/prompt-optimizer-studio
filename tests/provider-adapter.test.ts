@@ -358,3 +358,22 @@ test('normalizeProviderModelCatalog keeps alias-only model ids across protocols'
     ['command-a-03-2025', 'command-r-plus'],
   )
 })
+
+test('OpenAI-compatible adapter treats a missing /models endpoint as an empty catalog', async () => {
+  const originalFetch = global.fetch
+
+  try {
+    global.fetch = (async () => new Response('Not Found', { status: 404 })) as typeof fetch
+
+    const adapter = createProviderAdapter({
+      cpamcBaseUrl: 'https://gateway.example.com/codex',
+      cpamcApiKey: 'secret',
+      apiProtocol: 'openai-compatible',
+    })
+
+    const models = await adapter.listModels()
+    assert.deepEqual(models, [])
+  } finally {
+    global.fetch = originalFetch
+  }
+})

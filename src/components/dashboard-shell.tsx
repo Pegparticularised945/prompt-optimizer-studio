@@ -2,14 +2,16 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown, Plus, SendHorizontal } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 
 import { DashboardControlRoom } from '@/components/dashboard-control-room'
 import { ModelAliasCombobox } from '@/components/ui/model-alias-combobox'
+import { SelectField } from '@/components/ui/select-field'
 import { StudioFrame } from '@/components/studio-frame'
 import { useI18n, useLocaleText } from '@/lib/i18n'
 import { focusDashboardJobs, getJobDisplayError, partitionDashboardJobs } from '@/lib/presentation'
 import { createRandomId } from '@/lib/random-id'
+import { buildReasoningEffortOptions, type ReasoningEffort } from '@/lib/reasoning-effort'
 
 type JobStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'manual_review' | 'cancelled'
 
@@ -37,12 +39,15 @@ interface DraftJob {
   title: string
   rawPrompt: string
   taskModel: string
+  reasoningEffort: ReasoningEffort
   customRubricMd: string
 }
 
 interface SettingsPayload {
   defaultOptimizerModel: string
   defaultJudgeModel: string
+  defaultOptimizerReasoningEffort: ReasoningEffort
+  defaultJudgeReasoningEffort: ReasoningEffort
   conversationPolicy: 'stateless' | 'pooled-3x'
 }
 
@@ -53,6 +58,7 @@ function createEmptyDraft(defaults?: SettingsPayload): DraftJob {
     title: '',
     rawPrompt: '',
     taskModel: defaultTaskModel,
+    reasoningEffort: defaults?.defaultOptimizerReasoningEffort ?? defaults?.defaultJudgeReasoningEffort ?? 'default',
     customRubricMd: '',
   }
 }
@@ -62,15 +68,18 @@ export function DashboardShell() {
   const { locale } = useI18n()
   const [jobs, setJobs] = useState<JobRecord[]>([])
   const [models, setModels] = useState<ModelOption[]>([])
+  const reasoningEffortOptions = useMemo(() => buildReasoningEffortOptions(locale), [locale])
   const [settings, setSettings] = useState<SettingsPayload>({
     defaultOptimizerModel: '',
     defaultJudgeModel: '',
+    defaultOptimizerReasoningEffort: 'default',
+    defaultJudgeReasoningEffort: 'default',
     conversationPolicy: 'stateless',
   })
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [actionableOnly, setActionableOnly] = useState(false)
-  const [submissionExpanded, setSubmissionExpanded] = useState(false)
+  const [submissionExpanded, setSubmissionExpanded] = useState(true)
   const [actionInFlight, setActionInFlight] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -101,6 +110,8 @@ export function DashboardShell() {
           const nextDefaults = {
             defaultOptimizerModel: settingsPayload.settings.defaultOptimizerModel,
             defaultJudgeModel: settingsPayload.settings.defaultJudgeModel,
+            defaultOptimizerReasoningEffort: settingsPayload.settings.defaultOptimizerReasoningEffort ?? 'default',
+            defaultJudgeReasoningEffort: settingsPayload.settings.defaultJudgeReasoningEffort ?? 'default',
             conversationPolicy: settingsPayload.settings.conversationPolicy,
           }
           setJobs(jobsPayload.jobs)
@@ -159,6 +170,8 @@ export function DashboardShell() {
         rawPrompt: draft.rawPrompt.trim(),
         optimizerModel: draft.taskModel.trim(),
         judgeModel: draft.taskModel.trim(),
+        optimizerReasoningEffort: draft.reasoningEffort,
+        judgeReasoningEffort: draft.reasoningEffort,
         customRubricMd: draft.customRubricMd.trim() || undefined,
       }))
       .filter((draft) => draft.rawPrompt)
@@ -314,56 +327,64 @@ export function DashboardShell() {
 	            </div>
 
             <AnimatePresence initial={false}>
-              {submissionExpanded ? (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                  className="submission-body"
-                >
-                  <div className="panel-grid">
-                    {drafts.map((draft, index) => (
-                      <div className="draft-card control-card subdued" key={draft.id}>
-                        <div className="card-topline">
-                          <span className="status pending">{text('草稿', 'Draft')} {index + 1}</span>
-                        </div>
-                        <label className="label">
-                          {text('标题', 'Title')}
-                          <input className="input" value={draft.title} onChange={(event) => updateDraft(setDrafts, draft.id, 'title', event.target.value)} placeholder={text('例如：医疗分诊控制台', 'For example: medical triage console')} />
-                        </label>
-                        <ModelAliasCombobox
-                          inputId={`draft-${draft.id}-task-model`}
-                          label={text('任务模型', 'Task model')}
-                          value={draft.taskModel}
-                          options={models}
-                          placeholder={settings.defaultOptimizerModel || settings.defaultJudgeModel || text('例如：gpt-5.2', 'For example: gpt-5.2')}
-                          disabled={submitting}
-                          onChange={(next) => updateDraft(setDrafts, draft.id, 'taskModel', next)}
-                        />
-                        <label className="label">
-                          {text('初版提示词', 'Initial prompt')}
-                          <textarea className="textarea" value={draft.rawPrompt} onChange={(event) => updateDraft(setDrafts, draft.id, 'rawPrompt', event.target.value)} placeholder={text('贴入一句话需求、初版 prompt，或待优化长提示词。', 'Paste a one-line need, an initial prompt, or a longer prompt that needs optimization.')} />
-                        </label>
-                        <details className="fold-card">
-                          <summary>{text('这条任务的评分标准', 'Scoring standard for this job')}</summary>
-                          <p className="small">{text('留空则跟随配置台里的全局评分标准。只会影响这条新任务。', 'Leave empty to follow the global scoring standard from settings. It only affects this new job.')}</p>
-                          <label className="label">
-                            {text('任务级评分标准覆写', 'Task-level scoring override')}
-                            <textarea
-                              className="textarea"
-                              rows={6}
-                              value={draft.customRubricMd}
-                              onChange={(event) => updateDraft(setDrafts, draft.id, 'customRubricMd', event.target.value)}
-                              placeholder={text('可选：为这条任务单独写一份评分标准。', 'Optional: write a separate scoring standard for this job.')}
-                            />
-                          </label>
-                        </details>
+              <motion.div
+                initial={false}
+                animate={submissionExpanded
+                  ? { opacity: 1, height: 'auto' }
+                  : { opacity: 0, height: 0 }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className="submission-body"
+                hidden={!submissionExpanded}
+                aria-hidden={!submissionExpanded}
+              >
+                <div className="panel-grid">
+                  {drafts.map((draft, index) => (
+                    <div className="draft-card control-card subdued" key={draft.id}>
+                      <div className="card-topline">
+                        <span className="status pending">{text('草稿', 'Draft')} {index + 1}</span>
                       </div>
-                    ))}
-                  </div>
-                </motion.div>
-              ) : null}
+                      <label className="label">
+                        {text('标题', 'Title')}
+                        <input className="input" value={draft.title} onChange={(event) => updateDraft(setDrafts, draft.id, 'title', event.target.value)} placeholder={text('例如：医疗分诊控制台', 'For example: medical triage console')} />
+                      </label>
+                      <ModelAliasCombobox
+                        inputId={`draft-${draft.id}-task-model`}
+                        label={text('任务模型', 'Task model')}
+                        value={draft.taskModel}
+                        options={models}
+                        placeholder={settings.defaultOptimizerModel || settings.defaultJudgeModel || text('例如：gpt-5.2', 'For example: gpt-5.2')}
+                        disabled={submitting}
+                        onChange={(next) => updateDraft(setDrafts, draft.id, 'taskModel', next)}
+                      />
+                      <SelectField
+                        label={text('推理强度', 'Reasoning effort')}
+                        value={draft.reasoningEffort}
+                        options={reasoningEffortOptions}
+                        disabled={submitting}
+                        onChange={(next) => updateDraft(setDrafts, draft.id, 'reasoningEffort', next)}
+                      />
+                      <label className="label">
+                        {text('初版提示词', 'Initial prompt')}
+                        <textarea className="textarea" value={draft.rawPrompt} onChange={(event) => updateDraft(setDrafts, draft.id, 'rawPrompt', event.target.value)} placeholder={text('贴入一句话需求、初版 prompt，或待优化长提示词。', 'Paste a one-line need, an initial prompt, or a longer prompt that needs optimization.')} />
+                      </label>
+                      <details className="fold-card">
+                        <summary>{text('这条任务的评分标准', 'Scoring standard for this job')}</summary>
+                        <p className="small">{text('留空则跟随配置台里的全局评分标准。只会影响这条新任务。', 'Leave empty to follow the global scoring standard from settings. It only affects this new job.')}</p>
+                        <label className="label">
+                          {text('任务级评分标准覆写', 'Task-level scoring override')}
+                          <textarea
+                            className="textarea"
+                            rows={6}
+                            value={draft.customRubricMd}
+                            onChange={(event) => updateDraft(setDrafts, draft.id, 'customRubricMd', event.target.value)}
+                            placeholder={text('可选：为这条任务单独写一份评分标准。', 'Optional: write a separate scoring standard for this job.')}
+                          />
+                        </label>
+                      </details>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
             </AnimatePresence>
 
             {actionMessage ? <div className="notice success">{actionMessage}</div> : null}
@@ -401,7 +422,7 @@ export function DashboardShell() {
 }
 
 function updateDraft(
-  setDrafts: React.Dispatch<React.SetStateAction<DraftJob[]>>,
+  setDrafts: Dispatch<SetStateAction<DraftJob[]>>,
   draftId: string,
   field: keyof Omit<DraftJob, 'id'>,
   value: string,

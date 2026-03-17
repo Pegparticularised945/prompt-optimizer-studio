@@ -8,6 +8,7 @@ import {
   DashboardControlRoom,
   type DashboardJobView,
 } from '../src/components/dashboard-control-room'
+import { DashboardShell } from '../src/components/dashboard-shell'
 import {
   JobDetailControlRoom,
   getDetailNoticeItems,
@@ -468,11 +469,25 @@ test('job detail hero keeps a dedicated result-stage chip above the job title', 
   assert.equal(countOccurrences(html, '>结果台<'), 1)
 })
 
+test('job detail summary replaces conversation with reasoning effort', () => {
+  const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps({
+    model: {
+      optimizerReasoningEffort: 'xhigh',
+      judgeReasoningEffort: 'high',
+    },
+  })))
+
+  assert.match(html, /推理强度/)
+  assert.match(html, /xhigh \/ high/)
+  assert.doesNotMatch(html, />会话</)
+})
+
 test('job detail keeps the task model editor as a searchable combobox', () => {
   const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps()))
 
   assert.match(html, /data-ui="model-alias-combobox"/)
   assert.match(html, /任务模型/)
+  assert.match(html, /推理强度/)
   assert.doesNotMatch(html, /任务模型别名/)
   assert.doesNotMatch(html, /combobox-input/)
   assert.doesNotMatch(html, /<select[^>]+id="job-task-model"/)
@@ -518,6 +533,16 @@ test('job detail result stage can switch into compare mode without changing the 
   assert.match(compareHtml, /当前最新完整提示词/)
   assert.match(compareHtml, /复制完整提示词/)
   assert.match(compareHtml, /class="result-compare-grid"/)
+})
+
+test('dashboard shell exposes a reasoning effort selector in the submission station', () => {
+  const html = renderToStaticMarkup(createElement(I18nProvider, {
+    initialLocale: 'zh-CN',
+    children: createElement(DashboardShell),
+  }))
+
+  assert.match(html, /推理强度/)
+  assert.match(html, /初版提示词/)
 })
 
 test('job detail readonly goal fields avoid nested scroll in the primary stable-rules view', () => {
@@ -1122,6 +1147,7 @@ function makeDetailProps(overrides: {
     },
     form: {
       taskModel: 'gpt-5.2',
+      reasoningEffort: 'default',
       maxRoundsOverrideValue: '12',
       pendingSteeringInput: '保持结果导向',
       customRubricMd: '',
@@ -1151,6 +1177,7 @@ function makeDetailProps(overrides: {
       onToggleCompareMode: () => {},
       onToggleRound: () => {},
       onTaskModelChange: () => {},
+      onReasoningEffortChange: () => {},
       onMaxRoundsOverrideChange: () => {},
       onPendingSteeringInputChange: () => {},
       onCustomRubricChange: () => {},
@@ -1170,8 +1197,12 @@ function makeDetailModel(): JobDetailViewModel {
     conversationPolicy: 'stateless',
     optimizerModel: 'gpt-5.2',
     judgeModel: 'gpt-5.2',
+    optimizerReasoningEffort: 'default',
+    judgeReasoningEffort: 'default',
     pendingOptimizerModel: null,
     pendingJudgeModel: null,
+    pendingOptimizerReasoningEffort: null,
+    pendingJudgeReasoningEffort: null,
     cancelRequestedAt: null,
     pauseRequestedAt: null,
     pendingSteeringItems: [],
@@ -1186,6 +1217,9 @@ function makeDetailModel(): JobDetailViewModel {
     },
     runMode: 'step',
     currentRound: 6,
+    candidateCount: 0,
+    scoreState: 'available',
+    failureKind: null,
     bestAverageScore: 96,
     maxRoundsOverride: 12,
     passStreak: 1,

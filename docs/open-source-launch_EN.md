@@ -24,17 +24,16 @@ Prompt Optimizer Studio turns prompt refinement into an operator-friendly pipeli
 - human steering stays inside the loop instead of outside it
 - the final deliverable is the latest full prompt, not a diff log
 - round history, drift checks, and stop rules stay visible
-- configurable scoring standards at both global and per-job level
-- bilingual operator UI
-- broader provider and model connectivity with self-hosted Docker deployment
+- stronger task-creation, task-detail, and runtime-parameter traceability
+- multi-provider connectivity with self-hosted Docker deployment
 
 ## Release Title
 
-`v0.1.2 - Configurable Scoring, Broader Model Coverage, and Bilingual UI`
+`v0.1.3 - Task Creation, Runtime Controls, Detail Views, and Stability Alignment`
 
 ## Release History
 
-### v0.1.2
+### v0.1.3
 
 Release shape:
 
@@ -44,20 +43,37 @@ Release shape:
 
 Highlights:
 
-- **Bilingual UI**: the main operator surfaces now switch between `中文 / EN`.
-- **Configurable scoring standards**: the Config Desk supports a global scoring override, while submission and job detail views support task-level scoring overrides in Markdown.
-- **Broader provider coverage**: beyond OpenAI-compatible, Anthropic, and Gemini, the public build now includes Mistral and Cohere native support plus presets for DeepSeek, Kimi, Qwen, GLM, and OpenRouter.
-- **Protocol override**: the Config Desk can now force a provider protocol when auto-detection is not enough.
-- **More complete runtime controls**: concurrent jobs is now configurable alongside threshold and max rounds.
-- **Searchable model picker**: the Control Room, Result Desk, and Config Desk now share a more stable searchable model picker and refined dropdown behavior.
-- **More operational task controls**: decision cards are clearer, and jobs can be completed/archived or restarted from the UI.
+1. **More controllable runtime parameters**
+   - Every model can now be configured with a reasoning-effort level.
+   - Runtime parameters now travel more cleanly across settings, job creation, job detail, API, and database snapshots.
+   - Task-level model and reasoning changes are easier to trace and audit.
+
+2. **Improved task creation and detail experience**
+   - The dashboard submission flow can carry key runtime parameters directly into new jobs.
+   - The job detail summary now shows `Reasoning effort` instead of lower-value summary metadata.
+   - Model selection, parameter editing, and result inspection are more consistent along the main public path.
+
+3. **Clearer result and state visibility**
+   - Missing scores, failed states, and best-score displays are presented more clearly.
+   - It is easier to tell what state a job actually reached and whether comparable output exists.
+   - A set of prompt-understanding and goal-anchor improvements is now aligned into the public path as well.
+
+4. **Stability and audit-chain improvements**
+   - Parameter snapshots are more complete across settings, jobs, API, UI, and DB.
+   - This release also includes a batch of general fixes around task creation, detail rendering, runtime parameter sync, and runtime stability.
+   - The public line stays aligned without pulling in the experiment desk or unverified skill / rubric / prompt-pack semantics.
+
+### v0.1.2
+
+- Added bilingual UI switching.
+- Added global and per-job scoring-standard overrides.
+- Expanded provider/model connectivity and protocol override support.
 
 ### v0.1.1
 
 - Fixed the dashboard crash in environments where `crypto.randomUUID` was unavailable.
 - Added a result comparison mode between the initial prompt and the current latest full prompt.
 - Hardened invalid round-score handling and clarified related error messages.
-- Published a real multi-round demo dataset together with refreshed screenshots and GitHub launch copy.
 
 ### v0.1.0
 
@@ -71,4 +87,4 @@ Highlights:
 
 ## Suggested Topics
 
-`prompt-engineering`, `prompt-optimizer`, `automation`, `prompt-pipeline`, `nextjs`, `react`, `typescript`, `sqlite`, `docker`, `openai-compatible`, `anthropic`, `gemini`, `mistral`, `cohere`, `openrouter`, `deepseek`, `bilingual`, `self-hosted`, `developer-tools`, `ai-tooling`
+`prompt-engineering`, `prompt-optimizer`, `automation`, `prompt-pipeline`, `nextjs`, `react`, `typescript`, `sqlite`, `docker`, `openai-compatible`, `anthropic`, `gemini`, `self-hosted`, `developer-tools`, `ai-tooling`
