@@ -1,8 +1,66 @@
 import type { ConversationPolicy } from "@/lib/engine/conversation-policy"
 import type { JobStatus } from "@/lib/server/types"
 
+export type JobFailureKind = "infra" | "content"
+export type JobScoreState = "available" | "not_generated"
+
 function isEnglish(locale?: string) {
   return locale === "en"
+}
+
+function matchesInfraFailureMessage(errorMessage: string) {
+  return /(fetch failed|timeout|timed out|gateway time-?out|bad gateway|the operation was aborted|etimedout|econnreset|econnrefused|socket hang up|cloudflare|upstream|network|\b50[234]\b)/i.test(errorMessage)
+}
+
+export function getJobScoreState(job: {
+  currentRound: number
+  candidateCount?: number | null
+}): JobScoreState {
+  const hasCandidate = typeof job.candidateCount === "number"
+    ? job.candidateCount > 0
+    : job.currentRound > 0
+
+  return hasCandidate ? "available" : "not_generated"
+}
+
+export function getJobFailureKind(job: {
+  status: JobStatus
+  currentRound: number
+  candidateCount?: number | null
+  errorMessage: string | null
+}): JobFailureKind | null {
+  if (job.status !== "failed") {
+    return null
+  }
+
+  if (job.errorMessage && matchesInfraFailureMessage(job.errorMessage)) {
+    return "infra"
+  }
+
+  const scoreState = getJobScoreState(job)
+  return scoreState === "not_generated" ? "infra" : "content"
+}
+
+export function getJobScoreDisplay(job: {
+  bestAverageScore: number
+  currentRound: number
+  candidateCount?: number | null
+}, locale: "zh-CN" | "en" = "zh-CN") {
+  void locale
+  return getJobScoreState(job) === "not_generated"
+    ? "—"
+    : job.bestAverageScore.toFixed(2)
+}
+
+export function getJobScoreMeta(job: {
+  currentRound: number
+  candidateCount?: number | null
+}, locale: "zh-CN" | "en" = "zh-CN") {
+  if (getJobScoreState(job) !== "not_generated") {
+    return null
+  }
+
+  return isEnglish(locale) ? "No score generated yet" : "未产生成绩"
 }
 
 export function getConversationPolicyLabel(policy: ConversationPolicy, locale: "zh-CN" | "en" = "zh-CN") {
@@ -252,6 +310,12 @@ export function getJobDisplayError(errorMessage: string | null, locale: "zh-CN" 
     return isEnglish(locale)
       ? 'The model returned an incomplete structured result, so this round could not be parsed. Retry directly; if it keeps happening, tighten the format requirement or switch models.'
       : '模型返回了格式不完整的结构化结果，系统没法继续解析这一轮。请直接重试；若反复出现，建议补充更明确的格式要求，或切换模型后再试。'
+  }
+
+  if (matchesInfraFailureMessage(errorMessage)) {
+    return isEnglish(locale)
+      ? 'This run failed at the request or provider layer. Retry directly; if it keeps happening, check the gateway, model availability, or network connection.'
+      : '本次是在请求或 provider 层失败的。可以直接重试；若频繁出现，再检查网关、模型可用性或网络连通性。'
   }
 
   return errorMessage

@@ -15,23 +15,29 @@ import {
 import { getPromptPackVersion } from '@/lib/server/prompt-pack'
 import { getSettings, validateCpamcConnection } from '@/lib/server/settings'
 import type { JobRunMode, JobStatus, JudgeRunRecord } from '@/lib/server/types'
-import { createWorkerRuntimeState, shouldReplaceWorkerRuntime } from '@/lib/server/worker-runtime'
-
-const WORKER_OWNER_ID = crypto.randomUUID()
+import {
+  createWorkerRuntimeState,
+  resolveStableWorkerOwnerId,
+  shouldReplaceWorkerRuntime,
+} from '@/lib/server/worker-runtime'
 
 const globalWorkerState = globalThis as typeof globalThis & {
   __promptOptimizerWorker?: ReturnType<typeof createWorkerRuntimeState>
+  __promptOptimizerWorkerOwnerId?: string
 }
 
+const WORKER_OWNER_ID = resolveStableWorkerOwnerId(globalWorkerState, () => crypto.randomUUID())
+const WORKER_RUNTIME_VERSION = crypto.randomUUID()
+
 export function ensureWorkerStarted() {
-  if (shouldReplaceWorkerRuntime(globalWorkerState.__promptOptimizerWorker, WORKER_OWNER_ID)) {
+  if (shouldReplaceWorkerRuntime(globalWorkerState.__promptOptimizerWorker, WORKER_OWNER_ID, WORKER_RUNTIME_VERSION)) {
     if (globalWorkerState.__promptOptimizerWorker?.intervalId) {
       clearInterval(globalWorkerState.__promptOptimizerWorker.intervalId)
     }
     if (globalWorkerState.__promptOptimizerWorker?.heartbeatIntervalId) {
       clearInterval(globalWorkerState.__promptOptimizerWorker.heartbeatIntervalId)
     }
-    globalWorkerState.__promptOptimizerWorker = createWorkerRuntimeState(WORKER_OWNER_ID)
+    globalWorkerState.__promptOptimizerWorker = createWorkerRuntimeState(WORKER_OWNER_ID, WORKER_RUNTIME_VERSION)
   }
 
   const state = globalWorkerState.__promptOptimizerWorker
@@ -69,6 +75,18 @@ export function resolvePostReviewStatus(input: {
   }
 
   return 'running'
+}
+
+export function resolvePostFailureStatus(input: {
+  runMode: JobRunMode
+  hasUsableResult: boolean
+  error: unknown
+}): JobStatus {
+  if (!input.hasUsableResult || !matchesInfraFailure(input.error)) {
+    return 'failed'
+  }
+
+  return input.runMode === 'step' ? 'paused' : 'manual_review'
 }
 
 async function pumpQueue() {
@@ -124,7 +142,12 @@ async function runJob(jobId: string) {
         return
       }
 
-      if (liveJob.pendingOptimizerModel || liveJob.pendingJudgeModel) {
+      if (
+        liveJob.pendingOptimizerModel
+        || liveJob.pendingJudgeModel
+        || liveJob.pendingOptimizerReasoningEffort !== null
+        || liveJob.pendingJudgeReasoningEffort !== null
+      ) {
         applyPendingJobModels(jobId)
       }
 
@@ -162,6 +185,8 @@ async function runJob(jobId: string) {
       const adapter = new CpamcModelAdapter(settings, effectivePack, {
         optimizerModel: activeJob.optimizerModel,
         judgeModel: activeJob.judgeModel,
+        optimizerReasoningEffort: activeJob.optimizerReasoningEffort,
+        judgeReasoningEffort: activeJob.judgeReasoningEffort,
       })
       const result = await runOptimizationCycle({
         adapter,
@@ -245,12 +270,38 @@ async function runJob(jobId: string) {
     }
   } catch (error) {
     const failedJob = getJobById(jobId)
+    const failureStatus = resolvePostFailureStatus({
+      runMode: failedJob?.runMode ?? 'auto',
+      hasUsableResult: Boolean(
+        failedJob
+        && (
+          failedJob.candidateCount > 0
+          || failedJob.currentRound > 0
+          || failedJob.finalCandidateId
+        )
+      ),
+      error,
+    })
     updateJobProgress(jobId, {
-      status: 'failed',
+      status: failureStatus,
       currentRound: failedJob?.currentRound ?? 0,
       bestAverageScore: failedJob?.bestAverageScore ?? 0,
       finalCandidateId: failedJob?.finalCandidateId ?? null,
       errorMessage: error instanceof Error ? error.message : 'Unknown worker error',
     })
   }
+}
+
+function matchesInfraFailure(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? '')
+  const status = typeof error === 'object' && error !== null && 'status' in error
+    ? Number((error as { status?: unknown }).status)
+    : NaN
+  const retriable = typeof error === 'object' && error !== null && 'retriable' in error
+    ? Boolean((error as { retriable?: unknown }).retriable)
+    : false
+
+  return retriable
+    || Number.isFinite(status) && (status === 408 || status === 429 || status >= 500)
+    || /(fetch failed|timeout|timed out|gateway time-?out|bad gateway|the operation was aborted|etimedout|econnreset|econnrefused|socket hang up|cloudflare|upstream|network|\b50[234]\b)/i.test(message)
 }
