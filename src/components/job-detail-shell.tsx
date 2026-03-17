@@ -8,7 +8,7 @@ import { type RoundCandidateView } from '@/components/job-round-card'
 import { StudioFrame } from '@/components/studio-frame'
 import { useI18n, useLocaleText } from '@/lib/i18n'
 import type { ReasoningEffort } from '@/lib/reasoning-effort'
-import { getTaskModelLabel, resolveLatestFullPrompt } from '@/lib/presentation'
+import { getJobFailureKind, getTaskModelLabel, resolveLatestFullPrompt } from '@/lib/presentation'
 import type { SteeringItem } from '@/lib/server/types'
 
 type JobStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'manual_review' | 'cancelled'
@@ -265,9 +265,7 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
       currentRound: detail.job.currentRound,
       candidateCount: detail.job.candidateCount,
       scoreState: detail.job.candidateCount > 0 ? 'available' : 'not_generated',
-      failureKind: detail.job.status === 'failed'
-        ? (detail.job.candidateCount === 0 ? 'infra' : 'content')
-        : null,
+      failureKind: getJobFailureKind(detail.job),
       bestAverageScore: detail.job.bestAverageScore,
       maxRoundsOverride: detail.job.maxRoundsOverride,
       passStreak: detail.job.passStreak,

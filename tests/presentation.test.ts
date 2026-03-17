@@ -68,6 +68,13 @@ test('job failure kind distinguishes infra-blocked failures from content failure
 
   assert.equal(getJobFailureKind({
     status: 'failed',
+    currentRound: 3,
+    candidateCount: 3,
+    errorMessage: '模型请求失败 (504): rawchat.cn | 504: Gateway time-out',
+  }), 'infra')
+
+  assert.equal(getJobFailureKind({
+    status: 'failed',
     currentRound: 1,
     candidateCount: 1,
     errorMessage: '候选稿分数字段无效：scoreBefore',
@@ -79,6 +86,15 @@ test('display error maps generic infra failures into a retryable explanation', a
 
   assert.equal(
     getJobDisplayError('fetch failed: ETIMEDOUT'),
-    '本次是在请求或 provider 层失败的，系统还没有产生成绩。可以直接重试；若频繁出现，再检查网关、模型可用性或网络连通性。',
+    '本次是在请求或 provider 层失败的。可以直接重试；若频繁出现，再检查网关、模型可用性或网络连通性。',
+  )
+})
+
+test('display error maps raw gateway timeout HTML into a retryable infra explanation', async () => {
+  const { getJobDisplayError } = await import('../src/lib/presentation')
+
+  assert.equal(
+    getJobDisplayError('模型请求失败 (504): <!DOCTYPE html><title>rawchat.cn | 504: Gateway time-out</title>'),
+    '本次是在请求或 provider 层失败的。可以直接重试；若频繁出现，再检查网关、模型可用性或网络连通性。',
   )
 })

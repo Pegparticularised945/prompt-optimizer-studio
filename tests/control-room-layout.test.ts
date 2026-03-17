@@ -535,6 +535,20 @@ test('job detail result stage can switch into compare mode without changing the 
   assert.match(compareHtml, /class="result-compare-grid"/)
 })
 
+test('dashboard shell removes the submission body when the station is collapsed', () => {
+  const CollapsedDashboardShell = DashboardShell as unknown as (props: { initialSubmissionExpanded: boolean }) => React.ReactElement
+  const html = renderToStaticMarkup(createElement(I18nProvider, {
+    initialLocale: 'zh-CN',
+    children: createElement(CollapsedDashboardShell, { initialSubmissionExpanded: false }),
+  }))
+
+  assert.match(html, /投递新任务/)
+  assert.match(html, /新增任务/)
+  assert.doesNotMatch(html, /推理强度/)
+  assert.doesNotMatch(html, /初版提示词/)
+  assert.doesNotMatch(html, /class="submission-body"/)
+})
+
 test('dashboard shell exposes a reasoning effort selector in the submission station', () => {
   const html = renderToStaticMarkup(createElement(I18nProvider, {
     initialLocale: 'zh-CN',

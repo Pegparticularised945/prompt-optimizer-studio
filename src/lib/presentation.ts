@@ -9,7 +9,7 @@ function isEnglish(locale?: string) {
 }
 
 function matchesInfraFailureMessage(errorMessage: string) {
-  return /(fetch failed|timeout|timed out|the operation was aborted|etimedout|econnreset|econnrefused|socket hang up|network)/i.test(errorMessage)
+  return /(fetch failed|timeout|timed out|gateway time-?out|bad gateway|the operation was aborted|etimedout|econnreset|econnrefused|socket hang up|cloudflare|upstream|network|\b50[234]\b)/i.test(errorMessage)
 }
 
 export function getJobScoreState(job: {
@@ -33,12 +33,12 @@ export function getJobFailureKind(job: {
     return null
   }
 
-  const scoreState = getJobScoreState(job)
-  if (scoreState === "not_generated" && job.errorMessage && matchesInfraFailureMessage(job.errorMessage)) {
+  if (job.errorMessage && matchesInfraFailureMessage(job.errorMessage)) {
     return "infra"
   }
 
-  return "content"
+  const scoreState = getJobScoreState(job)
+  return scoreState === "not_generated" ? "infra" : "content"
 }
 
 export function getJobScoreDisplay(job: {
@@ -314,8 +314,8 @@ export function getJobDisplayError(errorMessage: string | null, locale: "zh-CN" 
 
   if (matchesInfraFailureMessage(errorMessage)) {
     return isEnglish(locale)
-      ? 'This run failed at the request or provider layer before any score was produced. Retry directly; if it keeps happening, check the gateway, model availability, or network connection.'
-      : '本次是在请求或 provider 层失败的，系统还没有产生成绩。可以直接重试；若频繁出现，再检查网关、模型可用性或网络连通性。'
+      ? 'This run failed at the request or provider layer. Retry directly; if it keeps happening, check the gateway, model availability, or network connection.'
+      : '本次是在请求或 provider 层失败的。可以直接重试；若频繁出现，再检查网关、模型可用性或网络连通性。'
   }
 
   return errorMessage
