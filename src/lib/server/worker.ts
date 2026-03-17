@@ -162,8 +162,6 @@ async function runJob(jobId: string) {
       const adapter = new CpamcModelAdapter(settings, effectivePack, {
         optimizerModel: activeJob.optimizerModel,
         judgeModel: activeJob.judgeModel,
-        optimizerReasoningEffort: activeJob.optimizerReasoningEffort,
-        judgeReasoningEffort: activeJob.judgeReasoningEffort,
       })
       const result = await runOptimizationCycle({
         adapter,
