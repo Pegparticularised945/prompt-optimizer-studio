@@ -29,9 +29,34 @@ Prompt Optimizer Studio turns prompt refinement into an operator-friendly pipeli
 
 ## Release Title
 
-`v0.1.4 - Interaction Fixes, Clearer Errors, and Runtime Fail-Soft Handling`
+`v0.1.5 - Clearer Dashboard States and Friendlier Infra Error Handling`
 
 ## Release History
+
+### v0.1.5
+
+Release shape:
+
+- This release remains the **Self-Hosted / Server Edition**.
+- Data stays on the machine or deployment environment running the app.
+- A separate `Web Local Edition` may come later, but it is not part of this release.
+
+Highlights:
+
+1. **More accurate control-room state visibility**
+   - Fixed an issue where jobs without any generated score could still appear as `0.00` in the dashboard.
+   - Jobs without a valid score now show `—` with a clearer “No score generated yet” state.
+   - The same score-display behavior is now aligned across recent results and history cards.
+
+2. **Friendlier infrastructure error messaging**
+   - Added recognition for upstream failure patterns such as `stream error`, `INTERNAL_ERROR`, `received from peer`, and `server_error`.
+   - These cases are now normalized into retryable infrastructure/provider failures.
+   - Users no longer have to parse raw upstream error payloads directly in the control room.
+
+3. **Regression coverage**
+   - Added regression coverage for dashboard cards with no generated score.
+   - Added regression coverage for stream/internal provider error classification.
+   - This helps keep the maintenance patch small, focused, and stable for public release.
 
 ### v0.1.4
 

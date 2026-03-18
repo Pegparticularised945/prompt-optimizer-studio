@@ -559,6 +559,34 @@ test('dashboard shell exposes a reasoning effort selector in the submission stat
   assert.match(html, /初版提示词/)
 })
 
+test('dashboard cards show missing-score copy instead of 0.00 when no candidate was generated', () => {
+  const html = renderToStaticMarkup(createElement(DashboardControlRoom, {
+    actionableOnly: false,
+    loading: false,
+    groups: {
+      attention: [],
+      running: [makeJob('no-score-running', 'running', {
+        currentRound: 0,
+        candidateCount: 0,
+        bestAverageScore: 0,
+      })],
+      queued: [],
+      recentCompleted: [],
+      history: [],
+    },
+    stats: { attention: 0, running: 1, queued: 0, recentCompleted: 0, history: 0 },
+    actionInFlight: null,
+    onToggleActionableOnly: () => {},
+    onCopyPrompt: async () => {},
+    onResumeStep: async () => {},
+    onResumeAuto: async () => {},
+  }))
+
+  assert.match(html, /最佳均分[^<]*—/)
+  assert.match(html, /未产生成绩/)
+  assert.doesNotMatch(html, /最佳均分[^<]*0\.00/)
+})
+
 test('job detail readonly goal fields avoid nested scroll in the primary stable-rules view', () => {
   const html = renderToStaticMarkup(createElement(JobDetailControlRoom, {
     model: makeDetailModel(),
@@ -1115,12 +1143,17 @@ test('job detail notices map known internal score errors into friendly copy', ()
 })
 
 
-function makeJob(id: string, status: DashboardJobView['status']): DashboardJobView {
+function makeJob(
+  id: string,
+  status: DashboardJobView['status'],
+  overrides: Partial<DashboardJobView> = {},
+): DashboardJobView {
   return {
     id,
     title: id,
     status,
     currentRound: 1,
+    candidateCount: 1,
     bestAverageScore: 92,
     latestPrompt: 'Latest prompt preview',
     errorMessage: null,
@@ -1128,6 +1161,7 @@ function makeJob(id: string, status: DashboardJobView['status']): DashboardJobVi
     conversationPolicy: 'stateless',
     optimizerModel: 'gpt-5.2',
     judgeModel: 'gpt-5.2',
+    ...overrides,
   }
 }
 

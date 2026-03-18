@@ -9,7 +9,7 @@ function isEnglish(locale?: string) {
 }
 
 function matchesInfraFailureMessage(errorMessage: string) {
-  return /(fetch failed|timeout|timed out|gateway time-?out|bad gateway|the operation was aborted|etimedout|econnreset|econnrefused|socket hang up|cloudflare|upstream|network|\b50[234]\b)/i.test(errorMessage)
+  return /(fetch failed|timeout|timed out|gateway time-?out|bad gateway|the operation was aborted|etimedout|econnreset|econnrefused|socket hang up|cloudflare|upstream|network|\b50[234]\b|stream error|internal_error|received from peer|server_error)/i.test(errorMessage)
 }
 
 export function getJobScoreState(job: {

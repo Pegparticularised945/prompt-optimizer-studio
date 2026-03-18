@@ -24,6 +24,8 @@ import {
   getDashboardDecisionSummary,
   getConversationPolicyLabel,
   getJobDisplayError,
+  getJobScoreDisplay,
+  getJobScoreMeta,
   getJobStatusLabel,
   getPromptPreview,
   groupHistoryJobsByTitle,
@@ -36,6 +38,7 @@ export type DashboardJobView = {
   title: string
   status: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'manual_review' | 'cancelled'
   currentRound: number
+  candidateCount: number
   bestAverageScore: number
   latestPrompt: string
   errorMessage: string | null
@@ -462,6 +465,8 @@ function HistoryGroupCardStatic({
   if (!latestJob) {
     return null
   }
+  const latestScoreDisplay = getJobScoreDisplay(latestJob, locale)
+  const latestScoreMeta = getJobScoreMeta(latestJob, locale)
 
   return (
     <div className="history-group-card">
@@ -476,7 +481,8 @@ function HistoryGroupCardStatic({
             <p className="prompt-preview">{getPromptPreview(latestJob.latestPrompt, 120)}</p>
             <div className="card-metrics">
               <span>{text('最近更新', 'Updated')} {formatDate(latestJob.createdAt, locale)}</span>
-              <span>{text('最新最佳', 'Best')} {latestJob.bestAverageScore.toFixed(2)}</span>
+              <span>{text('最新最佳', 'Best')} {latestScoreDisplay}</span>
+              {latestScoreMeta ? <span>{latestScoreMeta}</span> : null}
             </div>
           </div>
           <span className="history-group-chevron" aria-hidden="true">
@@ -495,7 +501,8 @@ function HistoryGroupCardStatic({
                 </div>
                 <div className="card-metrics compact-metrics">
                   <span>{text('轮次', 'Round')} {job.currentRound}</span>
-                  <span>{text('最佳均分', 'Best avg')} {job.bestAverageScore.toFixed(2)}</span>
+                  <span>{text('最佳均分', 'Best avg')} {getJobScoreDisplay(job, locale)}</span>
+                  {getJobScoreMeta(job, locale) ? <span>{getJobScoreMeta(job, locale)}</span> : null}
                   <span>{text('模型', 'Model')} {job.optimizerModel}</span>
                 </div>
               </div>
@@ -530,6 +537,8 @@ function HistoryGroupCard({
   if (!latestJob) {
     return null
   }
+  const latestScoreDisplay = getJobScoreDisplay(latestJob, locale)
+  const latestScoreMeta = getJobScoreMeta(latestJob, locale)
 
   return (
     <Accordion.Item value={group.key} className="history-group-card">
@@ -544,7 +553,8 @@ function HistoryGroupCard({
             <p className="prompt-preview">{getPromptPreview(latestJob.latestPrompt, 120)}</p>
             <div className="card-metrics">
               <span>{text('最近更新', 'Updated')} {formatDate(latestJob.createdAt, locale)}</span>
-              <span>{text('最新最佳', 'Best')} {latestJob.bestAverageScore.toFixed(2)}</span>
+              <span>{text('最新最佳', 'Best')} {latestScoreDisplay}</span>
+              {latestScoreMeta ? <span>{latestScoreMeta}</span> : null}
             </div>
           </div>
           <span className="history-group-chevron">
@@ -564,7 +574,8 @@ function HistoryGroupCard({
                 </div>
                 <div className="card-metrics compact-metrics">
                   <span>{text('轮次', 'Round')} {job.currentRound}</span>
-                  <span>{text('最佳均分', 'Best avg')} {job.bestAverageScore.toFixed(2)}</span>
+                  <span>{text('最佳均分', 'Best avg')} {getJobScoreDisplay(job, locale)}</span>
+                  {getJobScoreMeta(job, locale) ? <span>{getJobScoreMeta(job, locale)}</span> : null}
                   <span>{text('模型', 'Model')} {job.optimizerModel}</span>
                 </div>
               </div>
@@ -631,6 +642,8 @@ function DashboardJobCard({
         : { kind: 'link', label: text('打开详情', 'Open details'), href: `/jobs/${job.id}` }
   const hasFooterSecondaryActions = canAct || (primary.kind === 'action' && job.status !== 'completed')
   const decisionSummary = isDecisionCard ? getDashboardDecisionSummary(job, locale) : null
+  const bestScoreDisplay = getJobScoreDisplay(job, locale)
+  const bestScoreMeta = getJobScoreMeta(job, locale)
 
   if (isDecisionCard && decisionSummary) {
     return (
@@ -647,7 +660,8 @@ function DashboardJobCard({
         {decisionSummary.preview ? <p className="prompt-preview supporting-preview">{decisionSummary.preview}</p> : null}
         <div className="card-metrics compact-metrics decision-metrics">
           <span>{text('轮次', 'Round')} {job.currentRound}</span>
-          <span>{text('最佳均分', 'Best avg')} {job.bestAverageScore.toFixed(2)}</span>
+          <span>{text('最佳均分', 'Best avg')} {bestScoreDisplay}</span>
+          {bestScoreMeta ? <span>{bestScoreMeta}</span> : null}
           <span>{text('模型', 'Model')} {job.optimizerModel}</span>
           <span>{getConversationPolicyLabel(job.conversationPolicy, locale)}</span>
         </div>
@@ -738,7 +752,8 @@ function DashboardJobCard({
       <p className="prompt-preview">{getPromptPreview(job.latestPrompt, subdued ? 96 : 140)}</p>
       <div className="card-metrics compact-metrics">
         <span>{text('轮次', 'Round')} {job.currentRound}</span>
-        <span>{text('最佳均分', 'Best avg')} {job.bestAverageScore.toFixed(2)}</span>
+        <span>{text('最佳均分', 'Best avg')} {bestScoreDisplay}</span>
+        {bestScoreMeta ? <span>{bestScoreMeta}</span> : null}
       </div>
       <div className="card-metrics compact-metrics">
         <span>{text('模型', 'Model')} {job.optimizerModel}</span>

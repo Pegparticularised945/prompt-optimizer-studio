@@ -98,3 +98,12 @@ test('display error maps raw gateway timeout HTML into a retryable infra explana
     '本次是请求层失败，系统尚未产生成绩。可直接重试；若频繁出现，再看网关、模型可用性或网络连通性。',
   )
 })
+
+test('display error maps stream internal errors into a retryable infra explanation', async () => {
+  const { getJobDisplayError } = await import('../src/lib/presentation')
+
+  assert.equal(
+    getJobDisplayError('模型请求失败 (500): {"error":{"message":"stream error: stream ID 21; INTERNAL_ERROR; received from peer"}}'),
+    '本次是请求层失败，系统尚未产生成绩。可直接重试；若频繁出现，再看网关、模型可用性或网络连通性。',
+  )
+})

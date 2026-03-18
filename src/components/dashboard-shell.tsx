@@ -20,6 +20,7 @@ interface JobRecord {
   title: string
   status: JobStatus
   currentRound: number
+  candidateCount: number
   bestAverageScore: number
   latestPrompt: string
   errorMessage: string | null
