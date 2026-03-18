@@ -29,9 +29,33 @@ Prompt Optimizer Studio turns prompt refinement into an operator-friendly pipeli
 
 ## Release Title
 
-`v0.1.5 - Clearer Dashboard States and Friendlier Infra Error Handling`
+`v0.1.6 - Provider Retry Boundary Fix`
 
 ## Release History
+
+### v0.1.6
+
+Release shape:
+
+- This release remains the **Self-Hosted / Server Edition**.
+- Data stays on the machine or deployment environment running the app.
+- A separate `Web Local Edition` may come later, but it is not part of this release.
+
+Highlights:
+
+1. **Tighter provider retry boundaries**
+   - The app no longer blindly retries explicit upstream auth-unavailable failures.
+   - Generic `INTERNAL_ERROR` failures are no longer expanded into repeated retries by default.
+   - Retries now stay limited to clearly transient failures such as timeout, gateway, upstream, EOF, and network-style errors.
+
+2. **More truthful runtime failure handling**
+   - When the upstream provider is genuinely unavailable, jobs now fail faster instead of hanging at `round 0` for too long.
+   - This makes the control room reflect the real failure mode more accurately and makes retry-vs-debug decisions easier.
+
+3. **Regression coverage**
+   - Added regression coverage to ensure `auth_unavailable 500` is not retried.
+   - Added regression coverage to ensure generic thrown `INTERNAL_ERROR` is not retried.
+   - Preserved retry coverage for `504` and timeout/network-style failures so transient resilience is kept intact.
 
 ### v0.1.5
 
