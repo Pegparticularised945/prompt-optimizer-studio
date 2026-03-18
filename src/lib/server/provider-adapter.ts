@@ -654,9 +654,7 @@ async function createHttpError(response: Response, actionLabel: string) {
     status?: number
   }
   error.status = response.status
-  if (response.status === 408 || response.status === 429 || response.status >= 500) {
-    error.retriable = true
-  }
+  error.retriable = isRetriableHttpFailure(response.status, text)
   return error
 }
 
@@ -670,7 +668,7 @@ async function requestWithRetry<T>(operation: () => Promise<T>, maxAttempts: num
     } catch (error) {
       lastError = error
       attempt += 1
-      const retriable = error instanceof Error && 'retriable' in error ? Boolean((error as Error & { retriable?: boolean }).retriable) : true
+      const retriable = isRetriableRequestError(error)
       if (!retriable || attempt >= maxAttempts) {
         throw error
       }
@@ -679,6 +677,31 @@ async function requestWithRetry<T>(operation: () => Promise<T>, maxAttempts: num
   }
 
   throw lastError
+}
+
+function isRetriableRequestError(error: unknown) {
+  if (error instanceof Error && 'retriable' in error) {
+    return Boolean((error as Error & { retriable?: boolean }).retriable)
+  }
+
+  const message = error instanceof Error ? error.message : String(error ?? '')
+  return isRetriableTransientMessage(message)
+}
+
+function isRetriableHttpFailure(status: number, bodyText: string) {
+  if (status === 408 || status === 429 || status === 502 || status === 503 || status === 504) {
+    return true
+  }
+
+  if (status !== 500) {
+    return false
+  }
+
+  return isRetriableTransientMessage(bodyText)
+}
+
+function isRetriableTransientMessage(message: string) {
+  return /(fetch failed|timeout|timed out|gateway time-?out|bad gateway|service unavailable|the operation was aborted|aborterror|etimedout|econnreset|econnrefused|socket hang up|\beof\b|upstream connect|upstream timed out|network|\bhttp 000\b)/i.test(message)
 }
 
 function appendToBasePath(baseUrl: string, tail: string) {
