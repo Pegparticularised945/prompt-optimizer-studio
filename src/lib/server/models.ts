@@ -1,4 +1,4 @@
-import { createProviderAdapter, normalizeProviderModelCatalog } from '@/lib/server/providers/index'
+import { createProviderAdapter } from '@/lib/server/providers/index'
 import { validateCpamcConnection } from '@/lib/server/settings/index'
 import type { AppSettings, ModelCatalogItem } from '@/lib/contracts'
 
@@ -9,7 +9,25 @@ interface OpenAiModelListResponse {
 }
 
 export function normalizeModelCatalog(payload: OpenAiModelListResponse): string[] {
-  return normalizeProviderModelCatalog('openai-compatible', payload).map((item) => item.id)
+  const seen = new Set<string>()
+  const models: string[] = []
+
+  for (const rawId of payload.data?.map((item) => item.id) ?? []) {
+    if (typeof rawId !== 'string') {
+      continue
+    }
+
+    const trimmed = rawId.trim().replace(/^models\//i, '')
+    const alias = trimmed.split('/').filter(Boolean).at(-1)?.trim()
+    if (!alias || seen.has(alias)) {
+      continue
+    }
+
+    seen.add(alias)
+    models.push(alias)
+  }
+
+  return models
 }
 
 export async function fetchCpamcModels(

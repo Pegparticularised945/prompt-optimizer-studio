@@ -35,43 +35,16 @@
 
 ## 过渡层
 
-以下文件当前是显式桥接层，只允许纯 re-export：
+桥接层已在本轮移除完成。
 
-- `src/lib/server/types.ts`
-- `src/lib/server/jobs.ts`
-- `src/lib/server/provider-adapter.ts`
-- `src/lib/server/worker.ts`
-- `src/lib/server/worker-runtime.ts`
-- `src/lib/server/settings.ts`
-- `src/lib/server/prompt-pack.ts`
-- `src/lib/server/db.ts`
-- `src/components/dashboard-control-room.tsx`
-- `src/components/dashboard-shell.tsx`
-- `src/components/job-detail-control-room.tsx`
-- `src/components/job-detail-shell.tsx`
-- `src/components/job-round-card.tsx`
-- `src/components/settings-control-room.tsx`
-- `src/components/settings-shell.tsx`
-- `src/components/studio-frame.tsx`
-- `src/components/ui/confirm-dialog.tsx`
-- `src/components/ui/model-alias-combobox.tsx`
-- `src/components/ui/select-field.tsx`
-- `src/components/ui/use-hydrated.ts`
+当前要求：
 
-退出条件：
-
-- 页面、widgets、API route、运行时、测试不再引用这些桥接文件。
-- 相关调用方全部切换到 `contracts`、`widgets/*`、`shared/*`、`server/*/index.ts` 后删除桥接层。
+- 禁止重新引入 `src/components/*` 与 `src/lib/server/*` 的兼容 re-export 文件。
+- 页面、widgets、API route、脚本、测试统一直接依赖 `contracts`、`widgets/*`、`shared/*`、`server/*/index.ts`。
 
 ## 架构治理例外
 
-以下超大文件在当前轮先登记为过渡例外，不作为“新增 1000+ 文件”阻断对象：
-
-- `src/lib/server/jobs/internal.ts`
-
-退出条件：
-
-- 下一轮继续把 `jobs/internal.ts` 中的查询、命令、goal-anchor、steering、mapper 逻辑进一步实体拆分，最终取消该例外。
+本轮已移除 `src/lib/server/jobs/internal.ts` 过渡例外。
 
 ## TODO
 
@@ -81,10 +54,20 @@
 - [x] 为测试切换到新真实路径并清理硬编码绝对路径。
 - [x] 增加 `lint` 与 `check:architecture`。
 - [x] 跑通 `typecheck/test/build/lint/check:architecture` 并记录剩余失败。
-- [ ] 删除已无引用的桥接层。
+- [x] 删除已无引用的桥接层。
+- [x] 收紧 `jobs/index.ts` 导出面，并新增 `jobs/runtime.ts` 供 worker/runtime 独占使用。
+- [x] 物理拆分 `jobs/internal.ts` 为 `repository/shared/mappers + *-internal`，取消内部总线文件。
+- [x] 收紧 `providers/index.ts` 导出面，只保留工厂与协议推断；模型目录归一化和 transport/parsers 下沉到模块内部。
+- [x] 删除旧 `providers/adapter.ts` 大文件，保留 `providers/index.ts` 作为唯一公共入口。
+- [x] 将 `widgets/job-detail/page-shell.tsx` 拆成 query/actions/view-model 编排层，减少页面容器直接承载的加载与 mutation 逻辑。
+- [x] 将 `widgets/job-detail/control-room.tsx` 继续拆为 result/stable-rules/runtime-controls/pending-steering/diagnostics section，保留页面顺序与交互语义。
 
 ## 关键决策
 
 - 不做完整 FSD 落地，避免和 Next App Router 形成并行页面体系。
 - 优先稳定公开边界，再做更细粒度拆分，避免在迁移中反复打穿模块。
 - 对超大文件采用“显式登记 + 后续退出”策略，而不是一边过渡一边假装架构已经收敛完成。
+- `jobs` 对外分成两类入口：`index.ts` 面向 route/页面用例，`runtime.ts` 面向 worker；runtime-only 能力不再经公共 `index.ts` 暴露。
+- `providers` 模块对外唯一入口为 `providers/index.ts`；provider-specific normalize/parser/transport 均视为内部实现。
+- `job-detail/page-shell.tsx` 只保留页面编排职责；数据加载、动作编排、view-model 计算已拆出独立文件，避免继续在单文件堆积状态机。
+- `job-detail/control-room.tsx` 只保留页面级装配；section 组件只接收 view model / UI state / handlers，不直接触碰 server API。

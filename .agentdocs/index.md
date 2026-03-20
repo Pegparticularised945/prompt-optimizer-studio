@@ -11,4 +11,4 @@
 - 当前项目采用 Next App Router，`src/app` 是唯一页面与路由入口。
 - 前端采用局部 FSD 思想，不额外引入真实 `pages/entities/features` 目录层。
 - 服务端按业务能力聚合，跨模块调用优先通过 `src/lib/server/<module>/index.ts`。
-- 桥接文件允许短期存在，但必须保持为纯 re-export，不承载新逻辑。
+- 旧桥接层已退出；禁止重新引入 `src/components/*` 与 `src/lib/server/*` 的兼容 re-export 文件。

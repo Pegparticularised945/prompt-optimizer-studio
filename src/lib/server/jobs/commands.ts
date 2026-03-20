@@ -3,4 +3,4 @@ export {
   updateJobModels,
   updateJobMaxRoundsOverride,
   updateJobCustomRubricMd,
-} from '@/lib/server/jobs/internal'
+} from '@/lib/server/jobs/commands-internal'

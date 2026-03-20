@@ -5,4 +5,4 @@ export {
   getOptimizerSeed,
   claimNextRunnableJob,
   heartbeatJobClaim,
-} from '@/lib/server/jobs/internal'
+} from '@/lib/server/jobs/queries-internal'

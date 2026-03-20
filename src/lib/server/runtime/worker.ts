@@ -6,12 +6,12 @@ import {
   consumePendingSteeringItems,
   createCandidateWithJudgesForActiveWorker,
   finalizeCancelledJob,
-  getJobById,
   getOptimizerSeed,
+  getRuntimeJobById,
   heartbeatJobClaim,
   updateJobProgress,
   updateJobReviewState,
-} from '@/lib/server/jobs/index'
+} from '@/lib/server/jobs/runtime'
 import { getPromptPackVersion } from '@/lib/server/prompt-pack/index'
 import { getSettings, validateCpamcConnection } from '@/lib/server/settings/index'
 import type { JobRunMode, JobStatus, JudgeRunRecord } from '@/lib/contracts'
@@ -132,7 +132,7 @@ async function runJob(jobId: string) {
     validateCpamcConnection(settings)
 
     while (true) {
-      const liveJob = getJobById(jobId)
+      const liveJob = getRuntimeJobById(jobId)
       if (!liveJob) {
         return
       }
@@ -151,7 +151,7 @@ async function runJob(jobId: string) {
         applyPendingJobModels(jobId)
       }
 
-      const activeJob = getJobById(jobId)
+      const activeJob = getRuntimeJobById(jobId)
       if (!activeJob) {
         return
       }
@@ -233,7 +233,7 @@ async function runJob(jobId: string) {
       }
 
       const { candidateId, roundNumber } = committedCandidate
-      const latestJob = getJobById(jobId)
+      const latestJob = getRuntimeJobById(jobId)
       if (latestJob?.cancelRequestedAt) {
         finalizeCancelledJob(jobId)
         return
@@ -269,7 +269,7 @@ async function runJob(jobId: string) {
       }
     }
   } catch (error) {
-    const failedJob = getJobById(jobId)
+    const failedJob = getRuntimeJobById(jobId)
     const failureStatus = resolvePostFailureStatus({
       runMode: failedJob?.runMode ?? 'auto',
       hasUsableResult: Boolean(

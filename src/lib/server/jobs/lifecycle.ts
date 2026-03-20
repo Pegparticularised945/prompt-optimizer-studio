@@ -11,4 +11,4 @@ export {
   createCandidateWithJudges,
   createCandidateWithJudgesForActiveWorker,
   updateJobProgress,
-} from '@/lib/server/jobs/internal'
+} from '@/lib/server/jobs/lifecycle-internal'

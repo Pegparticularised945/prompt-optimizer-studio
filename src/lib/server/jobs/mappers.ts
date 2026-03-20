@@ -1,1 +1,1 @@
-export { getJobDisplayError } from '@/lib/server/jobs/internal'
+export { getJobDisplayError } from '@/lib/server/jobs/mappers-internal'

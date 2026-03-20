@@ -1,4 +1,4 @@
 export {
   buildGoalAnchorDraftFromPendingSteering,
   updateJobGoalAnchor,
-} from '@/lib/server/jobs/internal'
+} from '@/lib/server/jobs/goal-anchor-internal'

@@ -3,29 +3,7 @@ import path from 'node:path'
 
 const repoRoot = process.cwd()
 const sourceRoots = ['src', 'tests']
-const bridgeImports = new Set([
-  '@/lib/server/types',
-  '@/lib/server/jobs',
-  '@/lib/server/provider-adapter',
-  '@/lib/server/worker',
-  '@/lib/server/worker-runtime',
-  '@/lib/server/settings',
-  '@/lib/server/prompt-pack',
-  '@/lib/server/db',
-  '@/components/dashboard-control-room',
-  '@/components/dashboard-shell',
-  '@/components/job-detail-control-room',
-  '@/components/job-detail-shell',
-  '@/components/job-round-card',
-  '@/components/settings-control-room',
-  '@/components/settings-shell',
-  '@/components/studio-frame',
-  '@/components/ui/confirm-dialog',
-  '@/components/ui/model-alias-combobox',
-  '@/components/ui/select-field',
-  '@/components/ui/use-hydrated',
-])
-const bridgeFiles = new Set([
+const retiredCompatFiles = new Set([
   'src/lib/server/types.ts',
   'src/lib/server/jobs.ts',
   'src/lib/server/provider-adapter.ts',
@@ -47,9 +25,7 @@ const bridgeFiles = new Set([
   'src/components/ui/select-field.tsx',
   'src/components/ui/use-hydrated.ts',
 ])
-const oversizedAllowlist = new Set([
-  'src/lib/server/jobs/internal.ts',
-])
+const oversizedAllowlist = new Set([])
 const modularServerModules = new Set([
   'jobs',
   'runtime',
@@ -104,7 +80,10 @@ function checkFile(absPath) {
   const relPath = toRepoRelative(absPath)
   const source = fs.readFileSync(absPath, 'utf8')
   const lines = source.split(/\r?\n/)
-  const isBridgeFile = bridgeFiles.has(relPath)
+
+  if (retiredCompatFiles.has(relPath)) {
+    issues.push(`${relPath}: retired compatibility file must not be reintroduced`)
+  }
 
   if (relPath.startsWith('tests/') && machineAbsolutePathPattern.test(source)) {
     issues.push(`${relPath}: contains hardcoded machine absolute path`)
@@ -115,10 +94,6 @@ function checkFile(absPath) {
   }
 
   for (const specifier of collectImports(source)) {
-    if (bridgeImports.has(specifier) && !isBridgeFile) {
-      issues.push(`${relPath}: imports transitional bridge "${specifier}"`)
-    }
-
     if (relPath.startsWith('src/components/') && specifier.startsWith('@/lib/server/')) {
       issues.push(`${relPath}: components layer must not import server internals (${specifier})`)
     }
@@ -128,9 +103,21 @@ function checkFile(absPath) {
     }
 
     if (relPath.startsWith('src/app/api/') && specifier.startsWith('@/lib/server/')) {
-      if (!/^@\/lib\/server\/[^/]+(?:\/index)?$/.test(specifier) || bridgeImports.has(specifier)) {
+      if (!/^@\/lib\/server\/[^/]+(?:\/index)?$/.test(specifier)) {
         issues.push(`${relPath}: app/api must import server only through module index.ts (${specifier})`)
       }
+    }
+
+    if (relPath.startsWith('src/lib/server/runtime/') && specifier === '@/lib/server/jobs/index') {
+      issues.push(`${relPath}: runtime must import jobs internals only through "@/lib/server/jobs/runtime"`)
+    }
+
+    if (
+      !relPath.startsWith('src/lib/server/providers/')
+      && specifier.startsWith('@/lib/server/providers/')
+      && specifier !== '@/lib/server/providers/index'
+    ) {
+      issues.push(`${relPath}: providers module must be consumed only through "@/lib/server/providers/index" (${specifier})`)
     }
 
     if (relPath.startsWith('src/lib/server/')) {
@@ -143,10 +130,19 @@ function checkFile(absPath) {
         && modularServerModules.has(fromModule)
         && modularServerModules.has(toModule)
       ) {
-        if (!new RegExp(`^@/lib/server/${toModule}/index$`).test(specifier)) {
+        const allowedRuntimeImport = fromModule === 'runtime' && specifier === '@/lib/server/jobs/runtime'
+        if (!allowedRuntimeImport && !new RegExp(`^@/lib/server/${toModule}/index$`).test(specifier)) {
           issues.push(`${relPath}: server modules must cross-import only through "${toModule}/index.ts" (${specifier})`)
         }
       }
+    }
+
+    if (
+      relPath.startsWith('src/components/widgets/job-detail/')
+      && !/page-shell|use-job-detail-query|use-job-detail-actions/.test(relPath)
+      && specifier.startsWith('@/lib/server/')
+    ) {
+      issues.push(`${relPath}: job-detail sections must not import server internals directly (${specifier})`)
     }
   }
 }

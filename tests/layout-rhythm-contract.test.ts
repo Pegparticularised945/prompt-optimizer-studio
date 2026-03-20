@@ -4,7 +4,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 const globalsCssPath = path.resolve(process.cwd(), 'src/styles/globals.css')
-const jobDetailControlRoomPath = path.resolve(process.cwd(), 'src/components/widgets/job-detail/control-room.tsx')
+const stableRulesPanelPath = path.resolve(process.cwd(), 'src/components/widgets/job-detail/stable-rules-panel.tsx')
 
 test('section rhythm styles avoid fixed header min-height hacks for settings and latest-results lanes', () => {
   const source = fs.readFileSync(globalsCssPath, 'utf8')
@@ -109,7 +109,7 @@ test('task scoring editor keeps button actions visibly separated from the textar
 })
 
 test('stable-rules note belongs to the left long-term-rules stack instead of floating below the whole two-column area', () => {
-  const source = fs.readFileSync(jobDetailControlRoomPath, 'utf8')
+  const source = fs.readFileSync(stableRulesPanelPath, 'utf8')
 
   assert.match(
     source,
