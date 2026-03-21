@@ -127,9 +127,37 @@ export function getDb() {
       FOREIGN KEY (candidate_id) REFERENCES candidates(id)
     );
 
+    CREATE TABLE IF NOT EXISTS round_runs (
+      id TEXT PRIMARY KEY,
+      job_id TEXT NOT NULL,
+      round_number INTEGER NOT NULL,
+      input_prompt TEXT NOT NULL,
+      input_candidate_id TEXT,
+      output_candidate_id TEXT,
+      displayed_score REAL,
+      has_material_issues INTEGER,
+      summary TEXT NOT NULL DEFAULT '',
+      drift_labels_json TEXT NOT NULL DEFAULT '[]',
+      drift_explanation TEXT NOT NULL DEFAULT '',
+      findings_json TEXT NOT NULL DEFAULT '[]',
+      suggested_changes_json TEXT NOT NULL DEFAULT '[]',
+      round_status TEXT NOT NULL DEFAULT 'settled',
+      optimizer_error TEXT,
+      judge_error TEXT,
+      pass_streak_after INTEGER NOT NULL DEFAULT 0,
+      optimizer_telemetry_json TEXT NOT NULL DEFAULT '[]',
+      judge_telemetry_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (job_id) REFERENCES jobs(id),
+      FOREIGN KEY (input_candidate_id) REFERENCES candidates(id),
+      FOREIGN KEY (output_candidate_id) REFERENCES candidates(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_jobs_status_created_at ON jobs(status, created_at);
     CREATE INDEX IF NOT EXISTS idx_candidates_job_round ON candidates(job_id, round_number);
     CREATE INDEX IF NOT EXISTS idx_judge_runs_candidate_idx ON judge_runs(candidate_id, judge_index);
+    CREATE INDEX IF NOT EXISTS idx_round_runs_job_round ON round_runs(job_id, round_number);
+    CREATE INDEX IF NOT EXISTS idx_round_runs_output_candidate ON round_runs(output_candidate_id);
   `)
 
   ensureColumn(db, 'settings', 'api_protocol', "TEXT NOT NULL DEFAULT 'auto'")
@@ -164,6 +192,8 @@ export function getDb() {
   ensureColumn(db, 'judge_runs', 'drift_explanation', "TEXT NOT NULL DEFAULT ''")
   ensureColumn(db, 'settings', 'custom_rubric_md', "TEXT NOT NULL DEFAULT ''")
   ensureColumn(db, 'jobs', 'custom_rubric_md', 'TEXT')
+  ensureColumn(db, 'round_runs', 'optimizer_telemetry_json', "TEXT NOT NULL DEFAULT '[]'")
+  ensureColumn(db, 'round_runs', 'judge_telemetry_json', "TEXT NOT NULL DEFAULT '[]'")
   const existingSettings = db.prepare('SELECT id FROM settings WHERE id = 1').get() as { id?: number } | undefined
   if (!existingSettings) {
     db.prepare(`

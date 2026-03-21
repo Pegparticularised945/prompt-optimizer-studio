@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 
 import { JobRoundCard, type RoundCandidateView } from '@/components/job-round-card'
+import { JobRoundRunCard, type RoundRunView } from '@/components/job-round-run-card'
 import { ModelAliasCombobox } from '@/components/ui/model-alias-combobox'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SelectField } from '@/components/ui/select-field'
@@ -67,6 +68,7 @@ export type JobDetailViewModel = {
   modelsLabel: string
   effectiveMaxRounds: number
   candidates: RoundCandidateView[]
+  roundRuns?: RoundRunView[]
 }
 
 export function JobDetailControlRoom({
@@ -143,7 +145,7 @@ export function JobDetailControlRoom({
   const text = useLocaleText()
   const reasoningEffortOptions = buildReasoningEffortOptions(locale)
   const canEdit = model.status !== 'completed'
-  const canAdjustStableRules = ['paused', 'manual_review', 'failed'].includes(model.status)
+  const canAdjustStableRules = ['running', 'paused', 'manual_review', 'failed'].includes(model.status)
   const canSteer = !['completed', 'cancelled'].includes(model.status)
   const canRestart = ['pending', 'paused', 'failed', 'manual_review', 'cancelled'].includes(model.status)
   const canCancel = !['completed', 'cancelled'].includes(model.status)
@@ -172,6 +174,9 @@ export function JobDetailControlRoom({
     : `${getReasoningEffortLabel(model.optimizerReasoningEffort, locale)} / ${getReasoningEffortLabel(model.judgeReasoningEffort, locale)}`
   const bestScoreDisplay = getJobScoreDisplay(model, locale)
   const bestScoreMeta = getJobScoreMeta(model, locale)
+  const hasInputJudgedRounds = Boolean(model.roundRuns?.some((round) => round.semantics === 'input-judged-output-handed-off'))
+  const scoreSummaryLabel = text('最佳分数', 'Best score')
+  const scoreSummaryMeta = bestScoreMeta
 
   return (
     <div className="detail-control-room">
@@ -195,7 +200,7 @@ export function JobDetailControlRoom({
             <SummaryBadge label={text('推理强度', 'Reasoning effort')} value={reasoningEffortSummary} />
             <SummaryBadge label={text('运行模式', 'Run mode')} value={model.runMode === 'step' ? text('单步', 'Step') : text('自动', 'Auto')} />
             <SummaryBadge label={text('轮数上限', 'Round cap')} value={String(model.effectiveMaxRounds)} />
-            <SummaryBadge label={text('最佳分数', 'Best score')} value={bestScoreDisplay} meta={bestScoreMeta} />
+            <SummaryBadge label={scoreSummaryLabel} value={bestScoreDisplay} meta={scoreSummaryMeta} />
           </div>
         </div>
       </section>
@@ -559,7 +564,7 @@ export function JobDetailControlRoom({
                 {canRestart ? (
                   <ConfirmDialog
                     title={text('重新开始？', 'Restart from the beginning?')}
-                    description={text('这会清空当前候选稿与历史轮次，从初版提示词重新跑。', 'This clears the current candidates and round history, then restarts from the initial prompt.')}
+                    description={text('这会清空当前提示词版本与历史轮次，从初版提示词重新跑。', 'This clears the current prompt versions and round history, then restarts from the initial prompt.')}
                     confirmText={text('确认重新开始', 'Confirm restart')}
                     disabled={ui.retrying}
                     onConfirm={handlers.onRetry}
@@ -607,7 +612,7 @@ export function JobDetailControlRoom({
                 </div>
                 <ul className="list compact-list">
                   <li>{text('optimizer 会按当前顺序吸收这组引导，再基于完整提示词做最小必要改动。', 'The optimizer absorbs this steering batch in order, then makes the smallest necessary changes to the full prompt.')}</li>
-                  <li>{text('reviewer 不会看到这些引导原文，只会看到下一轮产出的候选提示词。', 'The reviewer never sees the raw steering. It only sees the next candidate prompt.')}</li>
+                  <li>{text('reviewer 不会看到这些引导原文，只会看到下一轮产出的新版本提示词。', 'The reviewer never sees the raw steering. It only sees the next generated prompt version.')}</li>
                 </ul>
               </div>
             ) : null}
@@ -705,16 +710,27 @@ export function JobDetailControlRoom({
             <p className="small">{text('默认只露摘要。需要时再展开每一轮的完整诊断和复核细节。', 'By default you only see the summary. Expand a round when you need the full diagnostic and review details.')}</p>
           </div>
         </div>
-        {model.candidates.length === 0 ? <div className="notice">{text('还没有产出候选稿。', 'No candidates yet.')}</div> : null}
+        {!hasInputJudgedRounds && model.candidates.length === 0
+          ? <div className="notice">{text('还没有产出新版本提示词。', 'No prompt versions yet.')}</div>
+          : null}
         <motion.div layout className="shell">
-          {model.candidates.map((candidate) => (
-            <JobRoundCard
-              key={candidate.id}
-              candidate={candidate}
-              expanded={Boolean(ui.expandedRounds[candidate.id])}
-              onToggle={() => handlers.onToggleRound(candidate.id)}
-            />
-          ))}
+          {hasInputJudgedRounds
+            ? model.roundRuns?.map((round) => (
+              <JobRoundRunCard
+                key={round.id}
+                round={round}
+                expanded={Boolean(ui.expandedRounds[round.id])}
+                onToggle={() => handlers.onToggleRound(round.id)}
+              />
+            ))
+            : model.candidates.map((candidate) => (
+              <JobRoundCard
+                key={candidate.id}
+                candidate={candidate}
+                expanded={Boolean(ui.expandedRounds[candidate.id])}
+                onToggle={() => handlers.onToggleRound(candidate.id)}
+              />
+            ))}
         </motion.div>
       </section>
     </div>

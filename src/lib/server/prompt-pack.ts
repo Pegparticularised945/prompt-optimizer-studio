@@ -8,11 +8,7 @@ import type { PromptPackVersion } from '@/lib/server/types'
 
 export function ensurePromptPackVersion(): PromptPackVersion {
   const pack = readPromptPackArtifacts()
-  const hash = createHash('sha256')
-    .update(pack.skillMd)
-    .update(pack.rubricMd)
-    .update(pack.templateMd)
-    .digest('hex')
+  const hash = hashPromptPackArtifacts(pack)
 
   const db = getDb()
   const existing = db.prepare(`
@@ -60,6 +56,30 @@ export function readPromptPackArtifacts(packDir = resolvePromptPackDir()) {
   const rubricMd = fs.readFileSync(path.join(packDir, 'references', 'rubric.md'), 'utf8')
   const templateMd = fs.readFileSync(path.join(packDir, 'references', 'universal-template.md'), 'utf8')
   return { skillMd, rubricMd, templateMd }
+}
+
+export function hashPromptPackArtifacts(input: Pick<PromptPackVersion, 'skillMd' | 'rubricMd' | 'templateMd'>) {
+  return createHash('sha256')
+    .update(input.skillMd)
+    .update(input.rubricMd)
+    .update(input.templateMd)
+    .digest('hex')
+}
+
+export function withPromptPackRubricOverride(pack: PromptPackVersion, rubricMd: string | null | undefined) {
+  if (!rubricMd || rubricMd === pack.rubricMd) {
+    return pack
+  }
+
+  return {
+    ...pack,
+    rubricMd,
+    hash: hashPromptPackArtifacts({
+      skillMd: pack.skillMd,
+      rubricMd,
+      templateMd: pack.templateMd,
+    }),
+  }
 }
 
 function mapPromptPackRow(row: Record<string, unknown>): PromptPackVersion {

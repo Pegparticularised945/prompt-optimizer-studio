@@ -478,10 +478,11 @@ function HistoryGroupCardStatic({
               <span className="meta">{formatRunCount(group.jobs.length, locale)}</span>
             </div>
             <h3>{group.title}</h3>
+            <p className="small">{text('最新输出提示词', 'Latest output prompt')}</p>
             <p className="prompt-preview">{getPromptPreview(latestJob.latestPrompt, 120)}</p>
             <div className="card-metrics">
               <span>{text('最近更新', 'Updated')} {formatDate(latestJob.createdAt, locale)}</span>
-              <span>{text('最新最佳', 'Best')} {latestScoreDisplay}</span>
+              <span>{text('最佳分数', 'Best score')} {latestScoreDisplay}</span>
               {latestScoreMeta ? <span>{latestScoreMeta}</span> : null}
             </div>
           </div>
@@ -501,7 +502,7 @@ function HistoryGroupCardStatic({
                 </div>
                 <div className="card-metrics compact-metrics">
                   <span>{text('轮次', 'Round')} {job.currentRound}</span>
-                  <span>{text('最佳均分', 'Best avg')} {getJobScoreDisplay(job, locale)}</span>
+                  <span>{text('最佳分数', 'Best score')} {getJobScoreDisplay(job, locale)}</span>
                   {getJobScoreMeta(job, locale) ? <span>{getJobScoreMeta(job, locale)}</span> : null}
                   <span>{text('模型', 'Model')} {job.optimizerModel}</span>
                 </div>
@@ -550,10 +551,11 @@ function HistoryGroupCard({
               <span className="meta">{formatRunCount(group.jobs.length, locale)}</span>
             </div>
             <h3>{group.title}</h3>
+            <p className="small">{text('最新输出提示词', 'Latest output prompt')}</p>
             <p className="prompt-preview">{getPromptPreview(latestJob.latestPrompt, 120)}</p>
             <div className="card-metrics">
               <span>{text('最近更新', 'Updated')} {formatDate(latestJob.createdAt, locale)}</span>
-              <span>{text('最新最佳', 'Best')} {latestScoreDisplay}</span>
+              <span>{text('最佳分数', 'Best score')} {latestScoreDisplay}</span>
               {latestScoreMeta ? <span>{latestScoreMeta}</span> : null}
             </div>
           </div>
@@ -574,7 +576,7 @@ function HistoryGroupCard({
                 </div>
                 <div className="card-metrics compact-metrics">
                   <span>{text('轮次', 'Round')} {job.currentRound}</span>
-                  <span>{text('最佳均分', 'Best avg')} {getJobScoreDisplay(job, locale)}</span>
+                  <span>{text('最佳分数', 'Best score')} {getJobScoreDisplay(job, locale)}</span>
                   {getJobScoreMeta(job, locale) ? <span>{getJobScoreMeta(job, locale)}</span> : null}
                   <span>{text('模型', 'Model')} {job.optimizerModel}</span>
                 </div>
@@ -660,7 +662,7 @@ function DashboardJobCard({
         {decisionSummary.preview ? <p className="prompt-preview supporting-preview">{decisionSummary.preview}</p> : null}
         <div className="card-metrics compact-metrics decision-metrics">
           <span>{text('轮次', 'Round')} {job.currentRound}</span>
-          <span>{text('最佳均分', 'Best avg')} {bestScoreDisplay}</span>
+          <span>{text('最佳分数', 'Best score')} {bestScoreDisplay}</span>
           {bestScoreMeta ? <span>{bestScoreMeta}</span> : null}
           <span>{text('模型', 'Model')} {job.optimizerModel}</span>
           <span>{getConversationPolicyLabel(job.conversationPolicy, locale)}</span>
@@ -712,7 +714,7 @@ function DashboardJobCard({
                   {canRestart ? (
                     <ConfirmDialog
                       title={text('重新开始？', 'Restart from the beginning?')}
-                      description={text('这会清空当前候选稿与历史轮次，从初版提示词重新跑。', 'This clears the current candidates and round history, then restarts from the initial prompt.')}
+                      description={text('这会清空当前提示词版本与历史轮次，从初版提示词重新跑。', 'This clears the current prompt versions and round history, then restarts from the initial prompt.')}
                       confirmText={text('确认重新开始', 'Confirm restart')}
                       tone="danger"
                       disabled={actionInFlight === `${job.id}:retry`}
@@ -749,10 +751,11 @@ function DashboardJobCard({
       ) : (
         <h3>{job.title}</h3>
       )}
+      <p className="small">{text('最新输出提示词', 'Latest output prompt')}</p>
       <p className="prompt-preview">{getPromptPreview(job.latestPrompt, subdued ? 96 : 140)}</p>
       <div className="card-metrics compact-metrics">
         <span>{text('轮次', 'Round')} {job.currentRound}</span>
-        <span>{text('最佳均分', 'Best avg')} {bestScoreDisplay}</span>
+        <span>{text('最佳分数', 'Best score')} {bestScoreDisplay}</span>
         {bestScoreMeta ? <span>{bestScoreMeta}</span> : null}
       </div>
       <div className="card-metrics compact-metrics">
@@ -799,7 +802,7 @@ function DashboardJobCard({
             {canRestart ? (
               <ConfirmDialog
                 title={text('重新开始？', 'Restart from the beginning?')}
-                description={text('这会清空当前候选稿与历史轮次，从初版提示词重新跑。', 'This clears the current candidates and round history, then restarts from the initial prompt.')}
+                description={text('这会清空当前提示词版本与历史轮次，从初版提示词重新跑。', 'This clears the current prompt versions and round history, then restarts from the initial prompt.')}
                 confirmText={text('确认重新开始', 'Confirm restart')}
                 tone="danger"
                 disabled={actionInFlight === `${job.id}:retry`}

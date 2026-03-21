@@ -4,6 +4,35 @@ import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
+function stubOpenAiJsonResponse(payload: Record<string, unknown>) {
+  const content = JSON.stringify(payload)
+
+  return (async (input: RequestInfo | URL) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+    if (url.endsWith('/responses')) {
+      return new Response(JSON.stringify({
+        output: [
+          {
+            type: 'message',
+            role: 'assistant',
+            content: [{ type: 'output_text', text: content }],
+          },
+        ],
+      }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+
+    return new Response(JSON.stringify({
+      choices: [
+        {
+          message: {
+            content,
+          },
+        },
+      ],
+    }), { status: 200, headers: { 'content-type': 'application/json' } })
+  }) as typeof fetch
+}
+
 test('job controls support cancel, next-round model updates, and legacy error mapping', async () => {
   const originalCwd = process.cwd()
   const originalDbPath = process.env.PROMPT_OPTIMIZER_DB_PATH
@@ -38,21 +67,13 @@ test('job controls support cancel, next-round model updates, and legacy error ma
       defaultJudgeReasoningEffort: 'medium',
     })
 
-    global.fetch = (async () => new Response(JSON.stringify({
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              goal: '保持任务原始目标',
-              deliverable: '输出原始任务要求的最终结果',
-              driftGuard: ['不要把任务改成别的事情'],
-              sourceSummary: '系统识别到原始任务要求保留核心目标。',
-              rationale: ['原始 prompt 很短，但明确给出了任务目标。'],
-            }),
-          },
-        },
-      ],
-    }), { status: 200 })) as typeof fetch
+    global.fetch = stubOpenAiJsonResponse({
+      goal: '保持任务原始目标',
+      deliverable: '输出原始任务要求的最终结果',
+      driftGuard: ['不要把任务改成别的事情'],
+      sourceSummary: '系统识别到原始任务要求保留核心目标。',
+      rationale: ['原始 prompt 很短，但明确给出了任务目标。'],
+    })
 
     const [pendingJob, runningJob] = await createJobs([
       {
@@ -269,21 +290,13 @@ test('job reads repair legacy generic goal anchors without touching specific anc
       defaultJudgeModel: 'gpt-5.2',
     })
 
-    global.fetch = (async () => new Response(JSON.stringify({
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              goal: '初始目标',
-              deliverable: '初始交付物',
-              driftGuard: ['初始边界'],
-              sourceSummary: '初始说明',
-              rationale: ['初始理由'],
-            }),
-          },
-        },
-      ],
-    }), { status: 200 })) as typeof fetch
+    global.fetch = stubOpenAiJsonResponse({
+      goal: '初始目标',
+      deliverable: '初始交付物',
+      driftGuard: ['初始边界'],
+      sourceSummary: '初始说明',
+      rationale: ['初始理由'],
+    })
 
     const [genericJob, specificJob] = await createJobs([
       { title: '寿喜烧大师', rawPrompt: '帮助用户做美味的寿喜烧', optimizerModel: 'gpt-5.2', judgeModel: 'gpt-5.2' },
@@ -1057,21 +1070,13 @@ test('job detail route builds a goal-anchor draft from selected steering ids onl
       defaultJudgeModel: 'gpt-5.2',
     })
 
-    global.fetch = (async () => new Response(JSON.stringify({
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              goal: '保持任务原始目标',
-              deliverable: '输出原始任务要求的最终结果',
-              driftGuard: ['不要把任务改成别的事情'],
-              sourceSummary: '系统识别到原始任务要求保留核心目标。',
-              rationale: ['原始 prompt 很短，但明确给出了任务目标。'],
-            }),
-          },
-        },
-      ],
-    }), { status: 200 })) as typeof fetch
+    global.fetch = stubOpenAiJsonResponse({
+      goal: '保持任务原始目标',
+      deliverable: '输出原始任务要求的最终结果',
+      driftGuard: ['不要把任务改成别的事情'],
+      sourceSummary: '系统识别到原始任务要求保留核心目标。',
+      rationale: ['原始 prompt 很短，但明确给出了任务目标。'],
+    })
 
     const [job] = await createJobs([
       { title: 'Route steering draft job', rawPrompt: 'Prompt', optimizerModel: 'gpt-5.2', judgeModel: 'gpt-5.2' },
@@ -1509,21 +1514,13 @@ test('createCandidateWithJudges rejects invalid numeric scores with a clear erro
       defaultJudgeModel: 'gpt-5.2',
     })
 
-    global.fetch = (async () => new Response(JSON.stringify({
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              goal: '保持任务原始目标',
-              deliverable: '输出原始任务要求的最终结果',
-              driftGuard: ['不要把任务改成别的事情'],
-              sourceSummary: '系统识别到原始任务要求保留核心目标。',
-              rationale: ['原始 prompt 很短，但明确给出了任务目标。'],
-            }),
-          },
-        },
-      ],
-    }), { status: 200 })) as typeof fetch
+    global.fetch = stubOpenAiJsonResponse({
+      goal: '保持任务原始目标',
+      deliverable: '输出原始任务要求的最终结果',
+      driftGuard: ['不要把任务改成别的事情'],
+      sourceSummary: '系统识别到原始任务要求保留核心目标。',
+      rationale: ['原始 prompt 很短，但明确给出了任务目标。'],
+    })
 
     const [job] = await createJobs([
       { title: 'Invalid score job', rawPrompt: 'A', optimizerModel: 'gpt-5.2', judgeModel: 'gpt-5.2' },

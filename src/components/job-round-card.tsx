@@ -40,13 +40,27 @@ export function JobRoundCard({
   const { locale } = useI18n()
   const text = useLocaleText()
   const review = candidate.judges[0]
+  const majorChanges = normalizeItems(candidate.majorChanges)
+  const deadEndSignals = normalizeItems(candidate.deadEndSignals)
+  const aggregatedIssues = normalizeItems(candidate.aggregatedIssues)
+  const findings = normalizeItems(review?.findings ?? [])
+  const suggestedChanges = normalizeItems(review?.suggestedChanges ?? [])
+  const humanizedMve = humanizeMve(candidate.mve, locale)
+  const hasDetailPanels = Boolean(humanizedMve)
+    || majorChanges.length > 0
+    || deadEndSignals.length > 0
+    || aggregatedIssues.length > 0
+    || findings.length > 0
+    || suggestedChanges.length > 0
+    || Boolean(review?.driftExplanation?.trim())
+    || Boolean(review?.driftLabels.length)
 
   return (
     <article className={`round-card compact-round round-card-minimal${expanded ? " expanded" : ""}`}>
       <div className="round-header">
         <div className="inline-actions">
           <span className="pill running">{locale === "zh-CN" ? `第 ${candidate.roundNumber} 轮` : `Round ${candidate.roundNumber}`}</span>
-          <span className="pill completed">{text("复核分数", "Review score")} {candidate.averageScore.toFixed(2)}</span>
+          <span className="pill completed">{text("这版提示词得分", "Prompt score")} {candidate.averageScore.toFixed(2)}</span>
           <span className={`pill ${review?.hasMaterialIssues ? "manual_review" : "completed"}`}>
             {review?.hasMaterialIssues ? text("需继续优化", "Needs more work") : text("本轮通过", "Passed this round")}
           </span>
@@ -77,67 +91,101 @@ export function JobRoundCard({
             <summary>{text("查看优化后提示词", "View optimized prompt")}</summary>
             <pre className="pre compact">{candidate.optimizedPrompt}</pre>
           </details>
-          <div className="round-analysis-grid">
-            <div className="round-analysis-stack">
-              <div className="panel round-mve-panel">
-                <strong>MVE</strong>
-                <pre className="pre compact round-mve-pre">{candidate.mve}</pre>
-              </div>
-              <div className="round-insight-grid">
-                <div className="panel round-info-panel">
-                  <strong>{text("主要修改", "Major changes")}</strong>
-                  <ul className="list compact-list">
-                    {candidate.majorChanges.map((item, index) => <li key={`${candidate.id}-major-${index}`}>{item}</li>)}
-                  </ul>
-                </div>
-                <div className="panel round-info-panel">
-                  <strong>{text("死胡同信号", "Dead-end signals")}</strong>
-                  <ul className="list compact-list">
-                    {candidate.deadEndSignals.map((item, index) => <li key={`${candidate.id}-signal-${index}`}>{item}</li>)}
-                  </ul>
-                </div>
-                <div className="panel round-info-panel">
-                  <strong>{text("修订补丁", "Revision patch")}</strong>
-                  <ul className="list compact-list">
-                    {candidate.aggregatedIssues.map((item, index) => <li key={`${candidate.id}-issue-${index}`}>{item}</li>)}
-                  </ul>
-                </div>
-              </div>
-            </div>
-            {review ? (
-              <div className="judge-card round-review-panel">
-                <div className="card-header round-review-header">
-                  <strong>{text("复核结果", "Review result")}</strong>
-                  <span className={`status ${review.hasMaterialIssues ? "manual_review" : "completed"}`}>{review.score}</span>
-                </div>
-                {review.driftLabels.length > 0 ? (
-                  <div className="round-review-section">
-                    <strong>{text("偏题标签", "Drift labels")}</strong>
-                    <div className="inline-actions">
-                      {review.driftLabels.map((item, index) => (
-                        <span className="pill manual_review" key={`${review.id}-drift-${index}`}>{item}</span>
-                      ))}
-                    </div>
-                    {review.driftExplanation ? <p className="small">{review.driftExplanation}</p> : null}
+          {!hasDetailPanels ? (
+            <div className="notice">{text('这一轮没有额外诊断细节。', 'This round has no extra diagnostic details.')}</div>
+          ) : (
+            <div className="round-analysis-grid">
+              <div className="round-analysis-stack">
+                {humanizedMve ? (
+                  <div className="panel round-mve-panel">
+                    <strong>{text('下一步最小验证', 'Next minimal check')}</strong>
+                    <pre className="pre compact round-mve-pre">{humanizedMve}</pre>
                   </div>
                 ) : null}
-                <div className="round-review-section">
-                  <strong>{text("发现的问题", "Issues found")}</strong>
-                  <ul className="list compact-list">
-                    {review.findings.map((item, index) => <li key={`${review.id}-finding-${index}`}>{item}</li>)}
-                  </ul>
-                </div>
-                <div className="round-review-section">
-                  <strong>{text("建议修改", "Suggested changes")}</strong>
-                  <ul className="list compact-list">
-                    {review.suggestedChanges.map((item, index) => <li key={`${review.id}-suggestion-${index}`}>{item}</li>)}
-                  </ul>
+                <div className="round-insight-grid">
+                  {majorChanges.length > 0 ? (
+                    <div className="panel round-info-panel">
+                      <strong>{text('这轮改了什么', 'What changed this round')}</strong>
+                      <ul className="list compact-list">
+                        {majorChanges.map((item, index) => <li key={`${candidate.id}-major-${index}`}>{item}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {deadEndSignals.length > 0 ? (
+                    <div className="panel round-info-panel">
+                      <strong>{text('走偏风险', 'Drift risks')}</strong>
+                      <ul className="list compact-list">
+                        {deadEndSignals.map((item, index) => <li key={`${candidate.id}-signal-${index}`}>{item}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {aggregatedIssues.length > 0 ? (
+                    <div className="panel round-info-panel">
+                      <strong>{text('还要补的地方', 'What still needs patching')}</strong>
+                      <ul className="list compact-list">
+                        {aggregatedIssues.map((item, index) => <li key={`${candidate.id}-issue-${index}`}>{item}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
                 </div>
               </div>
-            ) : null}
-          </div>
+              {review ? (
+                <div className="judge-card round-review-panel">
+                  <div className="card-header round-review-header">
+                    <strong>{text('这版提示词复核结果', 'Prompt review result')}</strong>
+                    <span className={`status ${review.hasMaterialIssues ? "manual_review" : "completed"}`}>{review.score}</span>
+                  </div>
+                  {review.driftLabels.length > 0 ? (
+                    <div className="round-review-section">
+                      <strong>{text("偏题标签", "Drift labels")}</strong>
+                      <div className="inline-actions">
+                        {review.driftLabels.map((item, index) => (
+                          <span className="pill manual_review" key={`${review.id}-drift-${index}`}>{item}</span>
+                        ))}
+                      </div>
+                      {review.driftExplanation ? <p className="small">{review.driftExplanation}</p> : null}
+                    </div>
+                  ) : null}
+                  {findings.length > 0 ? (
+                    <div className="round-review-section">
+                      <strong>{text('这次复核发现的问题', 'Issues found in this review')}</strong>
+                      <ul className="list compact-list">
+                        {findings.map((item, index) => <li key={`${review.id}-finding-${index}`}>{item}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {suggestedChanges.length > 0 ? (
+                    <div className="round-review-section">
+                      <strong>{text('下一步建议', 'Next suggestions')}</strong>
+                      <ul className="list compact-list">
+                        {suggestedChanges.map((item, index) => <li key={`${review.id}-suggestion-${index}`}>{item}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
       ) : null}
     </article>
   )
+}
+
+function normalizeItems(items: string[]) {
+  return items.map((item) => item.trim()).filter(Boolean)
+}
+
+function humanizeMve(value: string, locale: 'zh-CN' | 'en') {
+  const trimmed = value.trim()
+  if (!trimmed || isPlaceholderMve(trimmed)) {
+    return locale === 'zh-CN'
+      ? '再抽 1 个样例快速复核'
+      : 'Re-check with 1 quick sample'
+  }
+  return trimmed
+}
+
+function isPlaceholderMve(value: string) {
+  return /^(run a single sample|single run|mve)$/i.test(value.trim())
 }

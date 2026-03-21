@@ -1,4 +1,9 @@
 import { extractJsonObject } from '@/lib/server/json'
+import type {
+  ProviderEndpointKind,
+  ProviderRequestLabel,
+  ProviderRequestTelemetryEvent,
+} from '@/lib/server/request-telemetry'
 import type { ApiProtocol, AppSettings, ModelCatalogItem } from '@/lib/server/types'
 import { isGpt5FamilyModel, normalizeReasoningEffort, type ReasoningEffort } from '@/lib/reasoning-effort'
 
@@ -12,6 +17,9 @@ export interface ProviderJsonRequest {
   maxAttempts?: number
   attemptTimeoutCapMs?: number
   reasoningEffort?: ReasoningEffort
+  requestLabel?: ProviderRequestLabel
+  endpointMode?: 'auto' | 'chat' | 'responses' | 'responses_preferred'
+  telemetryCollector?: (event: ProviderRequestTelemetryEvent) => void
 }
 
 export interface ProviderAdapter {
@@ -23,6 +31,9 @@ export interface ProviderAdapter {
 type ProviderConnectionSettings = Pick<AppSettings, 'cpamcBaseUrl' | 'cpamcApiKey'> & Partial<Pick<AppSettings, 'apiProtocol'>>
 
 const DEFAULT_MODEL_REQUEST_ATTEMPT_TIMEOUT_CAP_MS = 60_000
+const GPT5_MEDIUM_REQUEST_ATTEMPT_TIMEOUT_CAP_MS = 120_000
+const GPT5_HIGH_REQUEST_ATTEMPT_TIMEOUT_CAP_MS = 180_000
+const GPT5_XHIGH_REQUEST_ATTEMPT_TIMEOUT_CAP_MS = 240_000
 const DEFAULT_MODEL_REQUEST_MAX_ATTEMPTS = 2
 
 interface OpenAiModelListResponse {
@@ -188,11 +199,28 @@ export function normalizeProviderModelCatalog(protocol: ApiProtocol, payload: un
   }
 }
 
+export function resolveDefaultModelRequestAttemptTimeoutCapMs(model: string, reasoningEffort: ReasoningEffort) {
+  if (!isGpt5FamilyModel(model)) {
+    return DEFAULT_MODEL_REQUEST_ATTEMPT_TIMEOUT_CAP_MS
+  }
+
+  switch (reasoningEffort) {
+    case 'medium':
+      return GPT5_MEDIUM_REQUEST_ATTEMPT_TIMEOUT_CAP_MS
+    case 'high':
+      return GPT5_HIGH_REQUEST_ATTEMPT_TIMEOUT_CAP_MS
+    case 'xhigh':
+      return GPT5_XHIGH_REQUEST_ATTEMPT_TIMEOUT_CAP_MS
+    default:
+      return DEFAULT_MODEL_REQUEST_ATTEMPT_TIMEOUT_CAP_MS
+  }
+}
+
 class OpenAiStyleProviderAdapter implements ProviderAdapter {
   readonly protocol: 'openai-compatible' | 'mistral-native'
 
   constructor(
-    private readonly settings: ProviderConnectionSettings,
+    protected readonly settings: ProviderConnectionSettings,
     protocol: 'openai-compatible' | 'mistral-native',
   ) {
     this.protocol = protocol
@@ -218,8 +246,17 @@ class OpenAiStyleProviderAdapter implements ProviderAdapter {
       ...(shouldSendTemperature(input.model, reasoningEffort) ? { temperature: 0.2 } : {}),
     }
 
-    const response = await requestWithRetry((attemptTimeoutMs) => (
-      runRequestWithTimeout('模型请求', attemptTimeoutMs, async (signal) => {
+    const response = await requestWithRetry(({ attempt, maxAttempts, attemptTimeoutMs }) => (
+      runProviderAttemptWithTelemetry({
+        telemetryCollector: input.telemetryCollector,
+        requestLabel: input.requestLabel ?? 'optimizer',
+        protocol: this.protocol,
+        endpointKind: 'chat_completions',
+        endpoint,
+        attempt,
+        maxAttempts,
+        timeoutMs: attemptTimeoutMs,
+      }, () => runRequestWithTimeout('模型请求', attemptTimeoutMs, async (signal) => {
         const result = await fetch(endpoint, {
           method: 'POST',
           headers: {
@@ -230,13 +267,32 @@ class OpenAiStyleProviderAdapter implements ProviderAdapter {
           signal,
         })
 
-        return parseJsonResponse(result, '模型请求', attemptTimeoutMs) as Promise<OpenAiChatCompletionResponse>
-      })
+        return {
+          payload: await parseJsonResponse(result, '模型请求', attemptTimeoutMs) as OpenAiChatCompletionResponse,
+          status: result.status,
+        }
+      }))
     ), {
       maxAttempts: input.maxAttempts ?? DEFAULT_MODEL_REQUEST_MAX_ATTEMPTS,
-      attemptTimeoutCapMs: input.attemptTimeoutCapMs ?? DEFAULT_MODEL_REQUEST_ATTEMPT_TIMEOUT_CAP_MS,
+      attemptTimeoutCapMs: input.attemptTimeoutCapMs ?? resolveDefaultModelRequestAttemptTimeoutCapMs(input.model, reasoningEffort),
       timeoutMs: input.timeoutMs,
       actionLabel: '模型请求',
+      onRetry: ({ attempt, maxAttempts, attemptTimeoutMs, delayMs, error }) => {
+        emitRequestTelemetry(input.telemetryCollector, {
+          kind: 'retry_scheduled',
+          requestLabel: input.requestLabel ?? 'optimizer',
+          protocol: this.protocol,
+          endpointKind: 'chat_completions',
+          endpoint,
+          attempt,
+          maxAttempts,
+          timeoutMs: attemptTimeoutMs,
+          elapsedMs: null,
+          status: getTelemetryStatus(error),
+          retriable: getTelemetryRetriable(error),
+          message: `retry in ${delayMs}ms: ${getTelemetryMessage(error)}`,
+        })
+      },
     })
 
     return extractJsonObject(extractOpenAiResponseText(response)) as Record<string, unknown>
@@ -255,8 +311,17 @@ class OpenAiStyleProviderAdapter implements ProviderAdapter {
       ...(shouldSendTemperature(input.model, reasoningEffort) ? { temperature: 0.2 } : {}),
     }
 
-    const response = await requestWithRetry((attemptTimeoutMs) => (
-      runRequestWithTimeout('模型请求', attemptTimeoutMs, async (signal) => {
+    const response = await requestWithRetry(({ attempt, maxAttempts, attemptTimeoutMs }) => (
+      runProviderAttemptWithTelemetry({
+        telemetryCollector: input.telemetryCollector,
+        requestLabel: input.requestLabel ?? 'optimizer',
+        protocol: this.protocol,
+        endpointKind: 'responses',
+        endpoint,
+        attempt,
+        maxAttempts,
+        timeoutMs: attemptTimeoutMs,
+      }, () => runRequestWithTimeout('模型请求', attemptTimeoutMs, async (signal) => {
         const result = await fetch(endpoint, {
           method: 'POST',
           headers: {
@@ -267,13 +332,35 @@ class OpenAiStyleProviderAdapter implements ProviderAdapter {
           signal,
         })
 
-        return parseOpenAiResponsesResponse(result, '模型请求', attemptTimeoutMs) as Promise<OpenAiResponsesResponse>
-      })
+        const payload = await parseOpenAiResponsesResponse(result, '模型请求', attemptTimeoutMs) as OpenAiResponsesResponse
+        assertOpenAiResponsesPayloadSucceeded(payload)
+
+        return {
+          payload,
+          status: result.status,
+        }
+      }))
     ), {
       maxAttempts: input.maxAttempts ?? DEFAULT_MODEL_REQUEST_MAX_ATTEMPTS,
-      attemptTimeoutCapMs: input.attemptTimeoutCapMs ?? DEFAULT_MODEL_REQUEST_ATTEMPT_TIMEOUT_CAP_MS,
+      attemptTimeoutCapMs: input.attemptTimeoutCapMs ?? resolveDefaultModelRequestAttemptTimeoutCapMs(input.model, reasoningEffort),
       timeoutMs: input.timeoutMs,
       actionLabel: '模型请求',
+      onRetry: ({ attempt, maxAttempts, attemptTimeoutMs, delayMs, error }) => {
+        emitRequestTelemetry(input.telemetryCollector, {
+          kind: 'retry_scheduled',
+          requestLabel: input.requestLabel ?? 'optimizer',
+          protocol: this.protocol,
+          endpointKind: 'responses',
+          endpoint,
+          attempt,
+          maxAttempts,
+          timeoutMs: attemptTimeoutMs,
+          elapsedMs: null,
+          status: getTelemetryStatus(error),
+          retriable: getTelemetryRetriable(error),
+          message: `retry in ${delayMs}ms: ${getTelemetryMessage(error)}`,
+        })
+      },
     })
 
     return extractJsonObject(extractOpenAiResponsesText(response)) as Record<string, unknown>
@@ -312,6 +399,161 @@ function shouldSendTemperature(model: string, reasoningEffort: ReasoningEffort) 
   return true
 }
 
+function shouldPreferResponsesApi(model: string, requestLabel?: ProviderRequestLabel) {
+  if (!isGpt5FamilyModel(model)) {
+    return false
+  }
+
+  return requestLabel === 'judge' || requestLabel === 'goal_anchor'
+}
+
+function shouldFallbackOpenAiCompatibleResponsesError(error: unknown) {
+  if (isMissingOpenAiCompatibleEndpoint(error)) {
+    return true
+  }
+
+  const message = getTelemetryMessage(error)
+  return /(request timeout|response body timeout|auth_unavailable|internal_error|internal server error|internal_server_error|received from peer|\beof\b)/i.test(message)
+}
+
+function resolveOpenAiCompatibleChatFallbackTimeoutMs(
+  input: ProviderJsonRequest,
+  reasoningEffort: ReasoningEffort,
+  error: unknown,
+) {
+  if (isMissingOpenAiCompatibleEndpoint(error)) {
+    return input.timeoutMs
+  }
+
+  return Math.min(
+    input.timeoutMs,
+    input.attemptTimeoutCapMs ?? resolveDefaultModelRequestAttemptTimeoutCapMs(input.model, reasoningEffort),
+    Math.max(1, Math.floor(input.timeoutMs / 2)),
+  )
+}
+
+function createOpenAiCompatibleChatFallbackInput(
+  input: ProviderJsonRequest,
+  reasoningEffort: ReasoningEffort,
+  error: unknown,
+): ProviderJsonRequest {
+  if (isMissingOpenAiCompatibleEndpoint(error)) {
+    return input
+  }
+
+  return {
+    ...input,
+    maxAttempts: 1,
+    timeoutMs: resolveOpenAiCompatibleChatFallbackTimeoutMs(input, reasoningEffort, error),
+    attemptTimeoutCapMs: resolveDefaultModelRequestAttemptTimeoutCapMs(input.model, reasoningEffort),
+  }
+}
+
+function createOpenAiCompatibleChatPrimaryInput(
+  input: ProviderJsonRequest,
+  reasoningEffort: ReasoningEffort,
+) {
+  if (input.requestLabel !== 'optimizer' || !isGpt5FamilyModel(input.model)) {
+    return input
+  }
+
+  const attemptTimeoutCapMs = input.attemptTimeoutCapMs
+    ?? resolveDefaultModelRequestAttemptTimeoutCapMs(input.model, reasoningEffort)
+
+  return {
+    ...input,
+    maxAttempts: 1,
+    attemptTimeoutCapMs: Math.max(attemptTimeoutCapMs, input.timeoutMs),
+  }
+}
+
+function createOpenAiCompatibleResponsesPreferredInput(
+  input: ProviderJsonRequest,
+  reasoningEffort: ReasoningEffort,
+) {
+  if (input.requestLabel !== 'optimizer' || !isGpt5FamilyModel(input.model)) {
+    return input
+  }
+
+  const attemptTimeoutCapMs = input.attemptTimeoutCapMs
+    ?? resolveDefaultModelRequestAttemptTimeoutCapMs(input.model, reasoningEffort)
+
+  return {
+    ...input,
+    attemptTimeoutCapMs: Math.max(attemptTimeoutCapMs, input.timeoutMs),
+  }
+}
+
+function buildOpenAiCompatibleResponsesFallbackMessage(error: unknown) {
+  if (isMissingOpenAiCompatibleEndpoint(error)) {
+    return getTelemetryMessage(error)
+  }
+
+  return `responses request failed; falling back to chat/completions: ${getTelemetryMessage(error)}`
+}
+
+function shouldFallbackOpenAiCompatibleResponsesPreferredError(error: unknown) {
+  return isMissingOpenAiCompatibleEndpoint(error)
+}
+
+function shouldFallbackOpenAiCompatibleChatError(
+  input: ProviderJsonRequest,
+  error: unknown,
+) {
+  if (isMissingOpenAiCompatibleEndpoint(error)) {
+    return true
+  }
+
+  if (input.requestLabel !== 'optimizer' || !isGpt5FamilyModel(input.model)) {
+    return false
+  }
+
+  if (isOpenAiCompatibleChatCapabilityMismatch(error)) {
+    return true
+  }
+
+  return false
+}
+
+function isOpenAiCompatibleChatCapabilityMismatch(error: unknown) {
+  const status = getTelemetryStatus(error)
+  if (status !== 400 && status !== 404 && status !== 422) {
+    return false
+  }
+
+  const message = getTelemetryMessage(error)
+  return /(unsupported|not supported|unknown parameter|unknown field|invalid parameter|reasoning[_ ]?effort|capability mismatch|responses api only)/i.test(message)
+}
+
+function buildOpenAiCompatibleChatFallbackMessage(error: unknown) {
+  if (isMissingOpenAiCompatibleEndpoint(error)) {
+    return getTelemetryMessage(error)
+  }
+
+  return `chat/completions request failed; falling back to responses: ${getTelemetryMessage(error)}`
+}
+
+function resolveOpenAiCompatibleResponsesFallbackTimeoutMs(
+  input: ProviderJsonRequest,
+  requestStartedAt: number,
+) {
+  return Math.max(1, resolveRemainingTimeoutMs(requestStartedAt, input.timeoutMs))
+}
+
+function createOpenAiCompatibleResponsesFallbackInput(
+  input: ProviderJsonRequest,
+  requestStartedAt: number,
+): ProviderJsonRequest {
+  const fallbackTimeoutMs = resolveOpenAiCompatibleResponsesFallbackTimeoutMs(input, requestStartedAt)
+
+  return {
+    ...input,
+    maxAttempts: 1,
+    timeoutMs: fallbackTimeoutMs,
+    attemptTimeoutCapMs: fallbackTimeoutMs,
+  }
+}
+
 class OpenAiCompatibleProviderAdapter extends OpenAiStyleProviderAdapter {
   constructor(settings: ProviderConnectionSettings) {
     super(settings, 'openai-compatible')
@@ -319,15 +561,110 @@ class OpenAiCompatibleProviderAdapter extends OpenAiStyleProviderAdapter {
 
   async requestJson(input: ProviderJsonRequest) {
     const reasoningEffort = normalizeReasoningEffort(input.reasoningEffort)
+    const requestStartedAt = Date.now()
+
+    if (input.endpointMode === 'responses') {
+      return this.requestJsonViaResponsesApi(input, reasoningEffort)
+    }
+
+    if (input.endpointMode === 'responses_preferred') {
+      const preferredInput = createOpenAiCompatibleResponsesPreferredInput(input, reasoningEffort)
+      try {
+        return await this.requestJsonViaResponsesApi(preferredInput, reasoningEffort)
+      } catch (error) {
+        if (!shouldFallbackOpenAiCompatibleResponsesPreferredError(error)) {
+          throw error
+        }
+        emitRequestTelemetry(input.telemetryCollector, {
+          kind: 'fallback',
+          requestLabel: input.requestLabel ?? 'optimizer',
+          protocol: this.protocol,
+          endpointKind: 'responses',
+          endpoint: appendToBasePath(this.settings.cpamcBaseUrl, 'responses'),
+          attempt: null,
+          maxAttempts: preferredInput.maxAttempts ?? DEFAULT_MODEL_REQUEST_MAX_ATTEMPTS,
+          timeoutMs: resolveOpenAiCompatibleChatFallbackTimeoutMs(preferredInput, reasoningEffort, error),
+          elapsedMs: null,
+          status: getTelemetryStatus(error),
+          retriable: getTelemetryRetriable(error),
+          message: buildOpenAiCompatibleResponsesFallbackMessage(error),
+          fallbackEndpointKind: 'chat_completions',
+        })
+
+        return this.requestJsonViaChatCompletions(
+          createOpenAiCompatibleChatFallbackInput(preferredInput, reasoningEffort, error),
+          reasoningEffort,
+        )
+      }
+    }
+
+    if (input.endpointMode === 'chat') {
+      return this.requestJsonViaChatCompletions(
+        createOpenAiCompatibleChatPrimaryInput(input, reasoningEffort),
+        reasoningEffort,
+      )
+    }
+
+    if (shouldPreferResponsesApi(input.model, input.requestLabel)) {
+      try {
+        return await this.requestJsonViaResponsesApi(input, reasoningEffort)
+      } catch (error) {
+        if (!shouldFallbackOpenAiCompatibleResponsesError(error)) {
+          throw error
+        }
+        emitRequestTelemetry(input.telemetryCollector, {
+          kind: 'fallback',
+          requestLabel: input.requestLabel ?? 'optimizer',
+          protocol: this.protocol,
+          endpointKind: 'responses',
+          endpoint: appendToBasePath(this.settings.cpamcBaseUrl, 'responses'),
+          attempt: null,
+          maxAttempts: input.maxAttempts ?? DEFAULT_MODEL_REQUEST_MAX_ATTEMPTS,
+          timeoutMs: resolveOpenAiCompatibleChatFallbackTimeoutMs(input, reasoningEffort, error),
+          elapsedMs: null,
+          status: getTelemetryStatus(error),
+          retriable: getTelemetryRetriable(error),
+          message: buildOpenAiCompatibleResponsesFallbackMessage(error),
+          fallbackEndpointKind: 'chat_completions',
+        })
+
+        return this.requestJsonViaChatCompletions(
+          createOpenAiCompatibleChatFallbackInput(input, reasoningEffort, error),
+          reasoningEffort,
+        )
+      }
+    }
 
     try {
-      return await this.requestJsonViaChatCompletions(input, reasoningEffort)
+      return await this.requestJsonViaChatCompletions(
+        createOpenAiCompatibleChatPrimaryInput(input, reasoningEffort),
+        reasoningEffort,
+      )
     } catch (error) {
-      if (!isMissingChatCompletionsEndpoint(error)) {
+      if (!shouldFallbackOpenAiCompatibleChatError(input, error)) {
         throw error
       }
+      const fallbackTimeoutMs = resolveOpenAiCompatibleResponsesFallbackTimeoutMs(input, requestStartedAt)
+      emitRequestTelemetry(input.telemetryCollector, {
+        kind: 'fallback',
+        requestLabel: input.requestLabel ?? 'optimizer',
+        protocol: this.protocol,
+        endpointKind: 'chat_completions',
+        endpoint: appendToBasePath(this.settings.cpamcBaseUrl, 'chat/completions'),
+        attempt: null,
+        maxAttempts: input.maxAttempts ?? DEFAULT_MODEL_REQUEST_MAX_ATTEMPTS,
+        timeoutMs: fallbackTimeoutMs,
+        elapsedMs: null,
+        status: getTelemetryStatus(error),
+        retriable: getTelemetryRetriable(error),
+        message: buildOpenAiCompatibleChatFallbackMessage(error),
+        fallbackEndpointKind: 'responses',
+      })
 
-      return this.requestJsonViaResponsesApi(input, reasoningEffort)
+      return this.requestJsonViaResponsesApi(
+        createOpenAiCompatibleResponsesFallbackInput(input, requestStartedAt),
+        reasoningEffort,
+      )
     }
   }
 }
@@ -363,8 +700,17 @@ class AnthropicNativeProviderAdapter implements ProviderAdapter {
       max_tokens: 2_048,
     }
 
-    const response = await requestWithRetry((attemptTimeoutMs) => (
-      runRequestWithTimeout('Anthropic 请求', attemptTimeoutMs, async (signal) => {
+    const response = await requestWithRetry(({ attempt, maxAttempts, attemptTimeoutMs }) => (
+      runProviderAttemptWithTelemetry({
+        telemetryCollector: input.telemetryCollector,
+        requestLabel: input.requestLabel ?? 'optimizer',
+        protocol: this.protocol,
+        endpointKind: 'anthropic_messages',
+        endpoint,
+        attempt,
+        maxAttempts,
+        timeoutMs: attemptTimeoutMs,
+      }, () => runRequestWithTimeout('Anthropic 请求', attemptTimeoutMs, async (signal) => {
         const result = await fetch(endpoint, {
           method: 'POST',
           headers: {
@@ -376,13 +722,32 @@ class AnthropicNativeProviderAdapter implements ProviderAdapter {
           signal,
         })
 
-        return parseJsonResponse(result, 'Anthropic 请求', attemptTimeoutMs) as Promise<AnthropicMessagesResponse>
-      })
+        return {
+          payload: await parseJsonResponse(result, 'Anthropic 请求', attemptTimeoutMs) as AnthropicMessagesResponse,
+          status: result.status,
+        }
+      }))
     ), {
       maxAttempts: input.maxAttempts ?? DEFAULT_MODEL_REQUEST_MAX_ATTEMPTS,
       attemptTimeoutCapMs: input.attemptTimeoutCapMs ?? DEFAULT_MODEL_REQUEST_ATTEMPT_TIMEOUT_CAP_MS,
       timeoutMs: input.timeoutMs,
       actionLabel: 'Anthropic 请求',
+      onRetry: ({ attempt, maxAttempts, attemptTimeoutMs, delayMs, error }) => {
+        emitRequestTelemetry(input.telemetryCollector, {
+          kind: 'retry_scheduled',
+          requestLabel: input.requestLabel ?? 'optimizer',
+          protocol: this.protocol,
+          endpointKind: 'anthropic_messages',
+          endpoint,
+          attempt,
+          maxAttempts,
+          timeoutMs: attemptTimeoutMs,
+          elapsedMs: null,
+          status: getTelemetryStatus(error),
+          retriable: getTelemetryRetriable(error),
+          message: `retry in ${delayMs}ms: ${getTelemetryMessage(error)}`,
+        })
+      },
     })
 
     return extractJsonObject(extractAnthropicResponseText(response)) as Record<string, unknown>
@@ -432,8 +797,17 @@ class GeminiNativeProviderAdapter implements ProviderAdapter {
       },
     }
 
-    const response = await requestWithRetry((attemptTimeoutMs) => (
-      runRequestWithTimeout('Gemini 请求', attemptTimeoutMs, async (signal) => {
+    const response = await requestWithRetry(({ attempt, maxAttempts, attemptTimeoutMs }) => (
+      runProviderAttemptWithTelemetry({
+        telemetryCollector: input.telemetryCollector,
+        requestLabel: input.requestLabel ?? 'optimizer',
+        protocol: this.protocol,
+        endpointKind: 'gemini_generate_content',
+        endpoint,
+        attempt,
+        maxAttempts,
+        timeoutMs: attemptTimeoutMs,
+      }, () => runRequestWithTimeout('Gemini 请求', attemptTimeoutMs, async (signal) => {
         const result = await fetch(endpoint, {
           method: 'POST',
           headers: {
@@ -444,13 +818,32 @@ class GeminiNativeProviderAdapter implements ProviderAdapter {
           signal,
         })
 
-        return parseJsonResponse(result, 'Gemini 请求', attemptTimeoutMs) as Promise<GeminiGenerateContentResponse>
-      })
+        return {
+          payload: await parseJsonResponse(result, 'Gemini 请求', attemptTimeoutMs) as GeminiGenerateContentResponse,
+          status: result.status,
+        }
+      }))
     ), {
       maxAttempts: input.maxAttempts ?? DEFAULT_MODEL_REQUEST_MAX_ATTEMPTS,
       attemptTimeoutCapMs: input.attemptTimeoutCapMs ?? DEFAULT_MODEL_REQUEST_ATTEMPT_TIMEOUT_CAP_MS,
       timeoutMs: input.timeoutMs,
       actionLabel: 'Gemini 请求',
+      onRetry: ({ attempt, maxAttempts, attemptTimeoutMs, delayMs, error }) => {
+        emitRequestTelemetry(input.telemetryCollector, {
+          kind: 'retry_scheduled',
+          requestLabel: input.requestLabel ?? 'optimizer',
+          protocol: this.protocol,
+          endpointKind: 'gemini_generate_content',
+          endpoint,
+          attempt,
+          maxAttempts,
+          timeoutMs: attemptTimeoutMs,
+          elapsedMs: null,
+          status: getTelemetryStatus(error),
+          retriable: getTelemetryRetriable(error),
+          message: `retry in ${delayMs}ms: ${getTelemetryMessage(error)}`,
+        })
+      },
     })
 
     return extractJsonObject(extractGeminiResponseText(response)) as Record<string, unknown>
@@ -488,8 +881,17 @@ class CohereNativeProviderAdapter implements ProviderAdapter {
       temperature: 0.2,
     }
 
-    const response = await requestWithRetry((attemptTimeoutMs) => (
-      runRequestWithTimeout('Cohere 请求', attemptTimeoutMs, async (signal) => {
+    const response = await requestWithRetry(({ attempt, maxAttempts, attemptTimeoutMs }) => (
+      runProviderAttemptWithTelemetry({
+        telemetryCollector: input.telemetryCollector,
+        requestLabel: input.requestLabel ?? 'optimizer',
+        protocol: this.protocol,
+        endpointKind: 'cohere_chat',
+        endpoint,
+        attempt,
+        maxAttempts,
+        timeoutMs: attemptTimeoutMs,
+      }, () => runRequestWithTimeout('Cohere 请求', attemptTimeoutMs, async (signal) => {
         const result = await fetch(endpoint, {
           method: 'POST',
           headers: {
@@ -500,13 +902,32 @@ class CohereNativeProviderAdapter implements ProviderAdapter {
           signal,
         })
 
-        return parseJsonResponse(result, 'Cohere 请求', attemptTimeoutMs) as Promise<CohereChatResponse>
-      })
+        return {
+          payload: await parseJsonResponse(result, 'Cohere 请求', attemptTimeoutMs) as CohereChatResponse,
+          status: result.status,
+        }
+      }))
     ), {
       maxAttempts: input.maxAttempts ?? DEFAULT_MODEL_REQUEST_MAX_ATTEMPTS,
       attemptTimeoutCapMs: input.attemptTimeoutCapMs ?? DEFAULT_MODEL_REQUEST_ATTEMPT_TIMEOUT_CAP_MS,
       timeoutMs: input.timeoutMs,
       actionLabel: 'Cohere 请求',
+      onRetry: ({ attempt, maxAttempts, attemptTimeoutMs, delayMs, error }) => {
+        emitRequestTelemetry(input.telemetryCollector, {
+          kind: 'retry_scheduled',
+          requestLabel: input.requestLabel ?? 'optimizer',
+          protocol: this.protocol,
+          endpointKind: 'cohere_chat',
+          endpoint,
+          attempt,
+          maxAttempts,
+          timeoutMs: attemptTimeoutMs,
+          elapsedMs: null,
+          status: getTelemetryStatus(error),
+          retriable: getTelemetryRetriable(error),
+          message: `retry in ${delayMs}ms: ${getTelemetryMessage(error)}`,
+        })
+      },
     })
 
     return extractJsonObject(extractCohereResponseText(response)) as Record<string, unknown>
@@ -529,7 +950,32 @@ class CohereNativeProviderAdapter implements ProviderAdapter {
 }
 
 function normalizeOpenAiModelCatalog(payload: OpenAiModelListResponse): ModelCatalogItem[] {
-  return dedupeModelIds((payload.data ?? []).map((item) => item.id))
+  const normalizedIds = (payload.data ?? [])
+    .map((item) => normalizeOpenAiCompatibleModelAlias(item.id))
+    .filter((item): item is string => Boolean(item))
+
+  const qualifiedSuffixes = new Set(
+    normalizedIds
+      .filter((item) => item.includes('/'))
+      .map((item) => item.split('/').filter(Boolean).at(-1) ?? item),
+  )
+
+  const seen = new Set<string>()
+  const models: ModelCatalogItem[] = []
+  for (const id of normalizedIds) {
+    if (!id.includes('/') && qualifiedSuffixes.has(id)) {
+      continue
+    }
+
+    if (seen.has(id)) {
+      continue
+    }
+
+    seen.add(id)
+    models.push({ id, label: id })
+  }
+
+  return models
 }
 
 function normalizeAnthropicModelCatalog(payload: AnthropicModelListResponse): ModelCatalogItem[] {
@@ -567,6 +1013,15 @@ function dedupeModelIds(ids: Array<string | undefined>): ModelCatalogItem[] {
   return models
 }
 
+function normalizeOpenAiCompatibleModelAlias(value: string | undefined) {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim().replace(/^models\//i, '')
+  return trimmed || null
+}
+
 function normalizeModelAlias(value: string | undefined) {
   if (typeof value !== 'string') {
     return null
@@ -601,12 +1056,7 @@ function extractOpenAiResponseText(response: OpenAiChatCompletionResponse) {
 }
 
 function extractOpenAiResponsesText(response: OpenAiResponsesResponse) {
-  const text = (response.output ?? [])
-    .flatMap((item) => item.type === 'message' ? item.content ?? [] : [])
-    .filter((part) => part.type === 'output_text' && typeof part.text === 'string')
-    .map((part) => part.text ?? '')
-    .join('\n')
-    .trim()
+  const text = collectOpenAiResponsesText(response)
 
   if (text) {
     return text
@@ -617,6 +1067,25 @@ function extractOpenAiResponsesText(response: OpenAiResponsesResponse) {
   }
 
   throw new Error('OpenAI Responses API 返回了空响应。')
+}
+
+function collectOpenAiResponsesText(response: OpenAiResponsesResponse) {
+  return (response.output ?? [])
+    .flatMap((item) => item.type === 'message' ? item.content ?? [] : [])
+    .filter((part) => part.type === 'output_text' && typeof part.text === 'string')
+    .map((part) => part.text ?? '')
+    .join('\n')
+    .trim()
+}
+
+function assertOpenAiResponsesPayloadSucceeded(response: OpenAiResponsesResponse) {
+  if (collectOpenAiResponsesText(response)) {
+    return
+  }
+
+  if (response.error?.message) {
+    throw new Error(response.error.message)
+  }
 }
 
 function extractAnthropicResponseText(response: AnthropicMessagesResponse) {
@@ -753,23 +1222,40 @@ async function readResponseBodyWithTimeout<T>(
 }
 
 async function requestWithRetry<T>(
-  operation: (attemptTimeoutMs: number) => Promise<T>,
-  options: { maxAttempts: number; attemptTimeoutCapMs?: number; timeoutMs: number; actionLabel: string },
+  operation: (input: { attempt: number; maxAttempts: number; attemptTimeoutMs: number }) => Promise<T>,
+  options: {
+    maxAttempts: number
+    attemptTimeoutCapMs?: number
+    timeoutMs: number
+    actionLabel: string
+    onRetry?: (input: {
+      attempt: number
+      maxAttempts: number
+      attemptTimeoutMs: number
+      delayMs: number
+      error: unknown
+    }) => void
+  },
 ) {
   let attempt = 0
   let lastError: unknown
   const startedAt = Date.now()
 
   while (attempt < options.maxAttempts) {
+    const currentAttempt = attempt + 1
     const attemptTimeoutMs = resolveAttemptTimeoutMs(startedAt, options.timeoutMs, options.attemptTimeoutCapMs)
     if (attemptTimeoutMs <= 0) {
       throw lastError ?? createRequestTimeoutError(options.actionLabel, options.timeoutMs)
     }
     try {
-      return await operation(attemptTimeoutMs)
+      return await operation({
+        attempt: currentAttempt,
+        maxAttempts: options.maxAttempts,
+        attemptTimeoutMs,
+      })
     } catch (error) {
       lastError = error
-      attempt += 1
+      attempt = currentAttempt
       const retriable = isRetriableRequestError(error)
       if (!retriable || attempt >= options.maxAttempts) {
         throw error
@@ -779,6 +1265,13 @@ async function requestWithRetry<T>(
       if (retryDelayMs <= 0) {
         throw error
       }
+      options.onRetry?.({
+        attempt: currentAttempt,
+        maxAttempts: options.maxAttempts,
+        attemptTimeoutMs,
+        delayMs: retryDelayMs,
+        error,
+      })
       await wait(retryDelayMs)
     }
   }
@@ -883,6 +1376,103 @@ function appendToBasePath(baseUrl: string, tail: string) {
   return url.toString()
 }
 
+async function runProviderAttemptWithTelemetry<T>(input: {
+  telemetryCollector?: (event: ProviderRequestTelemetryEvent) => void
+  requestLabel: ProviderRequestLabel
+  protocol: string
+  endpointKind: ProviderEndpointKind
+  endpoint: string
+  attempt: number
+  maxAttempts: number
+  timeoutMs: number
+}, operation: () => Promise<{ payload: T; status: number }>) {
+  const startedAt = Date.now()
+  emitRequestTelemetry(input.telemetryCollector, {
+    kind: 'attempt_started',
+    requestLabel: input.requestLabel,
+    protocol: input.protocol,
+    endpointKind: input.endpointKind,
+    endpoint: input.endpoint,
+    attempt: input.attempt,
+    maxAttempts: input.maxAttempts,
+    timeoutMs: input.timeoutMs,
+    elapsedMs: null,
+    status: null,
+    retriable: null,
+    message: 'attempt started',
+  })
+
+  try {
+    const result = await operation()
+    emitRequestTelemetry(input.telemetryCollector, {
+      kind: 'attempt_succeeded',
+      requestLabel: input.requestLabel,
+      protocol: input.protocol,
+      endpointKind: input.endpointKind,
+      endpoint: input.endpoint,
+      attempt: input.attempt,
+      maxAttempts: input.maxAttempts,
+      timeoutMs: input.timeoutMs,
+      elapsedMs: Date.now() - startedAt,
+      status: result.status,
+      retriable: false,
+      message: 'attempt succeeded',
+    })
+    return result.payload
+  } catch (error) {
+    emitRequestTelemetry(input.telemetryCollector, {
+      kind: 'attempt_failed',
+      requestLabel: input.requestLabel,
+      protocol: input.protocol,
+      endpointKind: input.endpointKind,
+      endpoint: input.endpoint,
+      attempt: input.attempt,
+      maxAttempts: input.maxAttempts,
+      timeoutMs: input.timeoutMs,
+      elapsedMs: Date.now() - startedAt,
+      status: getTelemetryStatus(error),
+      retriable: getTelemetryRetriable(error),
+      message: getTelemetryMessage(error),
+    })
+    throw error
+  }
+}
+
+function emitRequestTelemetry(
+  collector: ProviderJsonRequest['telemetryCollector'],
+  event: Omit<ProviderRequestTelemetryEvent, 'at'>,
+) {
+  collector?.({
+    ...event,
+    at: new Date().toISOString(),
+  })
+}
+
+function getTelemetryStatus(error: unknown) {
+  if (!error || typeof error !== 'object' || !('status' in error)) {
+    return null
+  }
+
+  const numeric = Number((error as { status?: unknown }).status)
+  return Number.isFinite(numeric) ? numeric : null
+}
+
+function getTelemetryRetriable(error: unknown) {
+  if (!error || typeof error !== 'object' || !('retriable' in error)) {
+    return null
+  }
+
+  return Boolean((error as { retriable?: unknown }).retriable)
+}
+
+function getTelemetryMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return String(error ?? 'unknown error')
+}
+
 function parseOpenAiResponsesEventStream(payload: string): OpenAiResponsesResponse {
   const blocks = payload
     .split(/\n\s*\n/g)
@@ -934,7 +1524,7 @@ function isOpenAiResponsesResponse(payload: unknown): payload is OpenAiResponses
   return typeof payload === 'object' && payload !== null
 }
 
-function isMissingChatCompletionsEndpoint(error: unknown) {
+function isMissingOpenAiCompatibleEndpoint(error: unknown) {
   return Boolean(
     error
     && typeof error === 'object'

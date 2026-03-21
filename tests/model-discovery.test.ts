@@ -6,7 +6,7 @@ import test from 'node:test'
 
 import { normalizeModelCatalog } from '../src/lib/server/models'
 
-test('normalizes OpenAI-style model payloads into alias-only ids', () => {
+test('normalizes OpenAI-style model payloads while preserving provider-qualified ids', () => {
   const result = normalizeModelCatalog({
     data: [
       { id: 'gpt-5.4' },
@@ -19,7 +19,7 @@ test('normalizes OpenAI-style model payloads into alias-only ids', () => {
     ],
   })
 
-  assert.deepEqual(result, ['gpt-5.4', 'gemini-3.1-pro', 'gpt-5.2'])
+  assert.deepEqual(result, ['gpt-5.4', 'gemini-3.1-pro', 'xingyun/gpt-5.2', 'imds/gpt-5.2'])
 })
 
 test('createJobs snapshots explicit and default task models plus reasoning values', async () => {

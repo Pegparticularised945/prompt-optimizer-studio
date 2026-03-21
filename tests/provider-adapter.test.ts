@@ -33,6 +33,21 @@ test('createProviderAdapter honors explicit apiProtocol override', () => {
   assert.equal(adapter.protocol, 'anthropic-native')
 })
 
+test('normalizeProviderModelCatalog preserves provider-prefixed OpenAI-compatible model ids', () => {
+  const models = normalizeProviderModelCatalog('openai-compatible', {
+    data: [
+      { id: 'openai/gpt-5.4' },
+      { id: 'openai/gpt-5.4' },
+      { id: 'anthropic/claude-sonnet-4.5' },
+    ],
+  })
+
+  assert.deepEqual(models, [
+    { id: 'openai/gpt-5.4', label: 'openai/gpt-5.4' },
+    { id: 'anthropic/claude-sonnet-4.5', label: 'anthropic/claude-sonnet-4.5' },
+  ])
+})
+
 test('OpenAI-compatible adapter posts chat completions with bearer auth', async () => {
   const originalFetch = global.fetch
   let capturedUrl = ''
@@ -98,7 +113,7 @@ test('OpenAI-compatible adapter times out when response body never resolves and 
           cancelled = true
         },
       },
-    })) as typeof fetch
+    })) as unknown as typeof fetch
 
     const adapter = createProviderAdapter({
       cpamcBaseUrl: 'https://api.openai.com/v1',
@@ -266,15 +281,14 @@ test('OpenAI-compatible adapter falls back to /responses when chat/completions i
   }
 })
 
-test('OpenAI-compatible adapter can parse JSON from Responses API payloads', async () => {
+test('OpenAI-compatible adapter keeps /responses as the primary endpoint for judge-labeled GPT-5 requests', async () => {
   const originalFetch = global.fetch
+  const requestedUrls: string[] = []
 
   try {
     global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
-      if (url.endsWith('/chat/completions')) {
-        return new Response('Not Found', { status: 404 })
-      }
+      requestedUrls.push(url)
 
       if (url.endsWith('/responses')) {
         assert.match(String(init?.body ?? ''), /"reasoning":\{"effort":"medium"\}/)
@@ -318,9 +332,502 @@ test('OpenAI-compatible adapter can parse JSON from Responses API payloads', asy
       timeoutMs: 1_000,
       maxAttempts: 1,
       reasoningEffort: 'medium',
+      requestLabel: 'judge',
     })
 
     assert.equal(payload.optimizedPrompt, 'json payload prompt')
+    assert.deepEqual(requestedUrls, [
+      'https://gateway.example.com/codex/responses',
+    ])
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('OpenAI-compatible adapter prefers /chat/completions as the primary endpoint for optimizer-labeled GPT-5 requests', async () => {
+  const originalFetch = global.fetch
+  const requestedUrls: string[] = []
+
+  try {
+    global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      requestedUrls.push(url)
+
+      if (url.endsWith('/chat/completions')) {
+        assert.match(String(init?.body ?? ''), /"reasoning_effort":"xhigh"/)
+        return new Response(JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: '{"optimizedPrompt":"optimizer direct chat prompt"}',
+              },
+            },
+          ],
+        }), { status: 200 })
+      }
+
+      throw new Error(`Unexpected URL: ${url}`)
+    }) as typeof fetch
+
+    const adapter = createProviderAdapter({
+      cpamcBaseUrl: 'https://gateway.example.com/codex',
+      cpamcApiKey: 'secret',
+      apiProtocol: 'openai-compatible',
+    })
+
+    const payload = await adapter.requestJson({
+      model: 'gpt-5.4',
+      system: 'system instruction',
+      user: 'user prompt',
+      timeoutMs: 1_000,
+      maxAttempts: 2,
+      reasoningEffort: 'xhigh',
+      requestLabel: 'optimizer',
+    })
+
+    assert.equal(payload.optimizedPrompt, 'optimizer direct chat prompt')
+    assert.deepEqual(requestedUrls, [
+      'https://gateway.example.com/codex/chat/completions',
+    ])
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('OpenAI-compatible optimizer timeout-like chat failures stay on chat and do not fall back to /responses', async () => {
+  const originalFetch = global.fetch
+  const requestedUrls: string[] = []
+  const telemetry: Array<Record<string, unknown>> = []
+
+  try {
+    global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      requestedUrls.push(url)
+
+      if (url.endsWith('/chat/completions')) {
+        return new Response('Gateway Timeout', { status: 504 })
+      }
+
+      throw new Error(`Unexpected URL: ${url}`)
+    }) as typeof fetch
+
+    const adapter = createProviderAdapter({
+      cpamcBaseUrl: 'https://gateway.example.com/codex',
+      cpamcApiKey: 'secret',
+      apiProtocol: 'openai-compatible',
+    })
+
+    await assert.rejects(
+      () => adapter.requestJson({
+        model: 'gpt-5.4',
+        system: 'system instruction',
+        user: 'user prompt',
+        timeoutMs: 180,
+        attemptTimeoutCapMs: 180,
+        maxAttempts: 2,
+        reasoningEffort: 'xhigh',
+        requestLabel: 'optimizer',
+        telemetryCollector: (event) => telemetry.push(event as unknown as Record<string, unknown>),
+      }),
+      /Gateway Timeout|504/i,
+    )
+
+    assert.deepEqual(requestedUrls, [
+      'https://gateway.example.com/codex/chat/completions',
+    ])
+
+    const fallbackEvent = telemetry.find((event) => event.kind === 'fallback')
+    assert.equal(fallbackEvent, undefined)
+
+    const responsesAttempt = telemetry.find((event) => event.kind === 'attempt_started' && event.endpointKind === 'responses')
+    assert.equal(responsesAttempt, undefined)
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('OpenAI-compatible optimizer xhigh chat primary uses the full total timeout budget', async () => {
+  const originalFetch = global.fetch
+  const originalNow = Date.now
+  const telemetry: Array<Record<string, unknown>> = []
+  let now = 10_000
+
+  try {
+    Date.now = () => now
+    global.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.endsWith('/chat/completions')) {
+        now += 100
+        return new Response('Gateway Timeout', { status: 504 })
+      }
+
+      throw new Error(`Unexpected URL: ${url}`)
+    }) as typeof fetch
+
+    const adapter = createProviderAdapter({
+      cpamcBaseUrl: 'https://gateway.example.com/codex',
+      cpamcApiKey: 'secret',
+      apiProtocol: 'openai-compatible',
+    })
+
+    await assert.rejects(
+      () => adapter.requestJson({
+        model: 'gpt-5.4',
+        system: 'system instruction',
+        user: 'user prompt',
+        timeoutMs: 360_000,
+        maxAttempts: 2,
+        reasoningEffort: 'xhigh',
+        requestLabel: 'optimizer',
+        telemetryCollector: (event) => telemetry.push(event as unknown as Record<string, unknown>),
+      }),
+      /Gateway Timeout|504/i,
+    )
+
+    const chatAttempt = telemetry.find((event) => event.kind === 'attempt_started' && event.endpointKind === 'chat_completions')
+    assert.ok(chatAttempt)
+    assert.equal(chatAttempt?.timeoutMs, 360_000)
+
+    const fallbackEvent = telemetry.find((event) => event.kind === 'fallback' && event.endpointKind === 'chat_completions')
+    assert.equal(fallbackEvent, undefined)
+
+    const responsesAttempt = telemetry.find((event) => event.kind === 'attempt_started' && event.endpointKind === 'responses')
+    assert.equal(responsesAttempt, undefined)
+  } finally {
+    Date.now = originalNow
+    global.fetch = originalFetch
+  }
+})
+
+test('OpenAI-compatible optimizer still falls back to /responses on chat capability mismatch', async () => {
+  const originalFetch = global.fetch
+  const originalNow = Date.now
+  const requestedUrls: string[] = []
+  const telemetry: Array<Record<string, unknown>> = []
+  let now = 10_000
+
+  try {
+    Date.now = () => now
+    global.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      requestedUrls.push(url)
+
+      if (url.endsWith('/chat/completions')) {
+        now += 25
+        return new Response(JSON.stringify({
+          error: {
+            message: 'unknown parameter: reasoning_effort',
+          },
+        }), { status: 400 })
+      }
+
+      if (url.endsWith('/responses')) {
+        return new Response(JSON.stringify({
+          id: 'resp_capability_1',
+          status: 'completed',
+          output: [
+            {
+              type: 'message',
+              role: 'assistant',
+              content: [
+                {
+                  type: 'output_text',
+                  text: '{"optimizedPrompt":"optimizer capability-fallback prompt"}',
+                },
+              ],
+            },
+          ],
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+      }
+
+      throw new Error(`Unexpected URL: ${url}`)
+    }) as typeof fetch
+
+    const adapter = createProviderAdapter({
+      cpamcBaseUrl: 'https://gateway.example.com/codex',
+      cpamcApiKey: 'secret',
+      apiProtocol: 'openai-compatible',
+    })
+
+    const payload = await adapter.requestJson({
+      model: 'gpt-5.4',
+      system: 'system instruction',
+      user: 'user prompt',
+      timeoutMs: 360_000,
+      maxAttempts: 2,
+      reasoningEffort: 'xhigh',
+      requestLabel: 'optimizer',
+      telemetryCollector: (event) => telemetry.push(event as unknown as Record<string, unknown>),
+    })
+
+    assert.equal(payload.optimizedPrompt, 'optimizer capability-fallback prompt')
+    assert.deepEqual(requestedUrls, [
+      'https://gateway.example.com/codex/chat/completions',
+      'https://gateway.example.com/codex/responses',
+    ])
+
+    const fallbackEvent = telemetry.find((event) => event.kind === 'fallback' && event.endpointKind === 'chat_completions')
+    assert.ok(fallbackEvent)
+    assert.equal(fallbackEvent?.timeoutMs, 359_975)
+    assert.match(String(fallbackEvent?.message ?? ''), /capability mismatch|unknown parameter|reasoning_effort/i)
+  } finally {
+    Date.now = originalNow
+    global.fetch = originalFetch
+  }
+})
+
+
+test('OpenAI-compatible adapter honors endpointMode=responses for optimizer GPT-5 probes', async () => {
+  const originalFetch = global.fetch
+  const requestedUrls: string[] = []
+
+  try {
+    global.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      requestedUrls.push(url)
+
+      if (url.endsWith('/responses')) {
+        return new Response(JSON.stringify({
+          id: 'resp_forced_1',
+          status: 'completed',
+          output: [
+            {
+              type: 'message',
+              role: 'assistant',
+              content: [
+                {
+                  type: 'output_text',
+                  text: '{"optimizedPrompt":"forced responses prompt"}',
+                },
+              ],
+            },
+          ],
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+      }
+
+      throw new Error(`Unexpected URL: ${url}`)
+    }) as typeof fetch
+
+    const adapter = createProviderAdapter({
+      cpamcBaseUrl: 'https://gateway.example.com/codex',
+      cpamcApiKey: 'secret',
+      apiProtocol: 'openai-compatible',
+    })
+
+    const payload = await adapter.requestJson({
+      model: 'gpt-5.4',
+      system: 'system instruction',
+      user: 'user prompt',
+      timeoutMs: 1_000,
+      maxAttempts: 1,
+      reasoningEffort: 'xhigh',
+      requestLabel: 'optimizer',
+      endpointMode: 'responses',
+    })
+
+    assert.equal(payload.optimizedPrompt, 'forced responses prompt')
+    assert.deepEqual(requestedUrls, [
+      'https://gateway.example.com/codex/responses',
+    ])
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('OpenAI-compatible adapter lets optimizer prefer /responses without losing chat fallback', async () => {
+  const originalFetch = global.fetch
+  const requestedUrls: string[] = []
+
+  try {
+    global.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      requestedUrls.push(url)
+
+      if (url.endsWith('/responses')) {
+        return new Response('missing', { status: 404 })
+      }
+
+      if (url.endsWith('/chat/completions')) {
+        return new Response(JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: '{"optimizedPrompt":"responses-preferred fallback prompt"}',
+              },
+            },
+          ],
+        }), { status: 200 })
+      }
+
+      throw new Error(`Unexpected URL: ${url}`)
+    }) as typeof fetch
+
+    const adapter = createProviderAdapter({
+      cpamcBaseUrl: 'https://gateway.example.com/codex',
+      cpamcApiKey: 'secret',
+      apiProtocol: 'openai-compatible',
+    })
+
+    const payload = await adapter.requestJson({
+      model: 'gpt-5.4',
+      system: 'system instruction',
+      user: 'user prompt',
+      timeoutMs: 1_000,
+      maxAttempts: 1,
+      reasoningEffort: 'xhigh',
+      requestLabel: 'optimizer',
+      endpointMode: 'responses_preferred',
+    })
+
+    assert.equal(payload.optimizedPrompt, 'responses-preferred fallback prompt')
+    assert.deepEqual(requestedUrls, [
+      'https://gateway.example.com/codex/responses',
+      'https://gateway.example.com/codex/chat/completions',
+    ])
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('OpenAI-compatible adapter keeps responses_preferred optimizer probes on a single full-budget attempt when maxAttempts=1', async () => {
+  const originalFetch = global.fetch
+  const requestedUrls: string[] = []
+  const telemetry: Array<Record<string, unknown>> = []
+
+  try {
+    global.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      requestedUrls.push(url)
+
+      if (url.endsWith('/responses')) {
+        return new Response('Gateway Timeout', { status: 504 })
+      }
+
+      throw new Error(`Unexpected URL: ${url}`)
+    }) as typeof fetch
+
+    const adapter = createProviderAdapter({
+      cpamcBaseUrl: 'https://gateway.example.com/codex',
+      cpamcApiKey: 'secret',
+      apiProtocol: 'openai-compatible',
+    })
+
+    await assert.rejects(
+      () => adapter.requestJson({
+        model: 'gpt-5.4',
+        system: 'system instruction',
+        user: 'user prompt',
+        timeoutMs: 360_000,
+        maxAttempts: 1,
+        reasoningEffort: 'xhigh',
+        requestLabel: 'optimizer',
+        endpointMode: 'responses_preferred',
+        telemetryCollector: (event) => telemetry.push(event as unknown as Record<string, unknown>),
+      }),
+      /Gateway Timeout|504/i,
+    )
+
+    assert.deepEqual(requestedUrls, [
+      'https://gateway.example.com/codex/responses',
+    ])
+
+    const responsesAttempts = telemetry.filter(
+      (event) => event.kind === 'attempt_started' && event.endpointKind === 'responses',
+    )
+    assert.equal(responsesAttempts.length, 1)
+    assert.equal(responsesAttempts[0]?.timeoutMs, 360_000)
+
+    const retryEvent = telemetry.find((event) => event.kind === 'retry_scheduled')
+    assert.equal(retryEvent, undefined)
+
+    const fallbackEvent = telemetry.find((event) => event.kind === 'fallback')
+    assert.equal(fallbackEvent, undefined)
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('OpenAI-compatible adapter retries retriable body errors returned inside 200 responses payloads', async () => {
+  const originalFetch = global.fetch
+  const requestedUrls: string[] = []
+  const telemetry: Array<Record<string, unknown>> = []
+  let responsesCallCount = 0
+
+  try {
+    global.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      requestedUrls.push(url)
+
+      if (!url.endsWith('/responses')) {
+        throw new Error(`Unexpected URL: ${url}`)
+      }
+
+      responsesCallCount += 1
+      if (responsesCallCount === 1) {
+        return new Response(JSON.stringify({
+          error: {
+            message: 'Post "https://ai.qaq.al/responses": net/http: TLS handshake timeout',
+          },
+        }), { status: 200 })
+      }
+
+      return new Response(JSON.stringify({
+        output: [
+          {
+            type: 'message',
+            role: 'assistant',
+            content: [
+              {
+                type: 'output_text',
+                text: '{"optimizedPrompt":"recovered after retriable body error"}',
+              },
+            ],
+          },
+        ],
+      }), { status: 200 })
+    }) as typeof fetch
+
+    const adapter = createProviderAdapter({
+      cpamcBaseUrl: 'https://gateway.example.com/codex',
+      cpamcApiKey: 'secret',
+      apiProtocol: 'openai-compatible',
+    })
+
+    const payload = await adapter.requestJson({
+      model: 'gpt-5.4',
+      system: 'system instruction',
+      user: 'user prompt',
+      timeoutMs: 360_000,
+      maxAttempts: 2,
+      reasoningEffort: 'xhigh',
+      requestLabel: 'optimizer',
+      endpointMode: 'responses_preferred',
+      telemetryCollector: (event) => telemetry.push(event as unknown as Record<string, unknown>),
+    })
+
+    assert.equal(payload.optimizedPrompt, 'recovered after retriable body error')
+    assert.deepEqual(requestedUrls, [
+      'https://gateway.example.com/codex/responses',
+      'https://gateway.example.com/codex/responses',
+    ])
+
+    const failedAttempts = telemetry.filter(
+      (event) => event.kind === 'attempt_failed' && event.endpointKind === 'responses',
+    )
+    assert.equal(failedAttempts.length, 1)
+    const retryEvent = telemetry.find((event) => event.kind === 'retry_scheduled' && event.endpointKind === 'responses')
+    assert.ok(retryEvent)
   } finally {
     global.fetch = originalFetch
   }
@@ -542,7 +1049,7 @@ test('Cohere native adapter posts v2 chat with bearer auth', async () => {
   }
 })
 
-test('normalizeProviderModelCatalog keeps alias-only model ids across protocols', () => {
+test('normalizeProviderModelCatalog preserves provider-qualified OpenAI-compatible ids while keeping native aliases stable', () => {
   assert.deepEqual(
     normalizeProviderModelCatalog('openai-compatible', {
       data: [
@@ -552,7 +1059,7 @@ test('normalizeProviderModelCatalog keeps alias-only model ids across protocols'
         { id: 'google/gemini-2.5-pro' },
       ],
     }).map((item) => item.id),
-    ['gpt-5.4', 'claude-sonnet-4', 'gemini-2.5-pro'],
+    ['openai/gpt-5.4', 'anthropic/claude-sonnet-4', 'google/gemini-2.5-pro'],
   )
 
   assert.deepEqual(

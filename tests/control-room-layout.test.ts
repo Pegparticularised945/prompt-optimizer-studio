@@ -582,9 +582,23 @@ test('dashboard cards show missing-score copy instead of 0.00 when no candidate 
     onResumeAuto: async () => {},
   }))
 
-  assert.match(html, /最佳均分[^<]*—/)
-  assert.match(html, /未产生成绩/)
-  assert.doesNotMatch(html, /最佳均分[^<]*0\.00/)
+  assert.match(html, /最佳分数[^<]*—/)
+  assert.match(html, /暂无分数/)
+  assert.doesNotMatch(html, /最佳分数[^<]*0\.00/)
+})
+
+test('job detail summary separates judged-input score from the latest output prompt', () => {
+  const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps({
+    model: {
+      candidateCount: 1,
+      roundRuns: [makeRoundRun()],
+    },
+  })))
+
+  assert.match(html, /最佳分数/)
+  assert.match(html, /当前最新完整提示词/)
+  assert.doesNotMatch(html, /最佳输入复核分数/)
+  assert.doesNotMatch(html, /对应已复核输入版本/)
 })
 
 test('job detail readonly goal fields avoid nested scroll in the primary stable-rules view', () => {
@@ -851,6 +865,18 @@ test('job detail keeps stable-rule adjustment available for editable states', ()
   const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps({
     model: {
       status: 'manual_review',
+    },
+  })))
+
+  assert.match(html, /调整长期规则/)
+  assert.match(html, /保存长期规则/)
+})
+
+test('job detail keeps stable-rule adjustment available while auto mode is still running', () => {
+  const html = renderToStaticMarkup(createElement(JobDetailControlRoom, makeDetailProps({
+    model: {
+      status: 'running',
+      runMode: 'auto',
     },
   })))
 
@@ -1310,6 +1336,45 @@ function makeCandidate(id: string): RoundCandidateView {
         suggestedChanges: [],
       },
     ],
+  }
+}
+
+function makeRoundRun() {
+  return {
+    id: 'round-2',
+    roundNumber: 2,
+    semantics: 'input-judged-output-handed-off' as const,
+    inputPrompt: 'ROUND 1 OUTPUT',
+    inputCandidateId: 'candidate-r1',
+    outputCandidateId: 'candidate-r2',
+    displayScore: 96,
+    hasMaterialIssues: false,
+    summary: '这一轮输入已经稳定，新版本会在下一轮继续复核。',
+    driftLabels: [],
+    driftExplanation: '',
+    findings: ['结构稳定。'],
+    suggestedChanges: ['继续压缩少量冗余措辞。'],
+    outcome: 'settled' as const,
+    optimizerError: null,
+    judgeError: null,
+    passStreakAfter: 2,
+    outputJudged: false,
+    outputCandidate: {
+      id: 'candidate-r2',
+      jobId: 'job-1',
+      roundNumber: 2,
+      optimizedPrompt: 'ROUND 2 OUTPUT',
+      strategy: 'rebuild' as const,
+      scoreBefore: 94,
+      averageScore: 0,
+      majorChanges: ['压缩输出协议。'],
+      mve: '用同一输入再跑一轮 judge。',
+      deadEndSignals: ['不要为了稳妥而丢交付。'],
+      aggregatedIssues: ['轻微语气偏硬。'],
+      appliedSteeringItems: [],
+      createdAt: '2026-03-20T00:01:00.000Z',
+    },
+    createdAt: '2026-03-20T00:01:10.000Z',
   }
 }
 

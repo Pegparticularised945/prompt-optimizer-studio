@@ -1,6 +1,9 @@
 import { formatGoalAnchorForPrompt } from '@/lib/server/goal-anchor'
 import type { GoalAnchor, PromptPackVersion, SteeringItem } from '@/lib/server/types'
 
+const optimizerSystemPromptCache = new Map<string, string>()
+const judgeSystemPromptCache = new Map<string, string>()
+
 export function compactFeedback(
   feedback: string[],
   options: { maxItems?: number; maxItemLength?: number } = {},
@@ -28,27 +31,12 @@ export function compactFeedback(
 export function buildOptimizerPrompts(input: {
   pack: PromptPackVersion
   currentPrompt: string
-  previousFeedback: string[]
   goalAnchor: GoalAnchor
   pendingSteeringItems?: SteeringItem[]
   threshold: number
 }) {
-  const system = [
-    'You are Prompt Optimizer Studio. Always follow the rule pack and return strict JSON only.',
-    'Treat this run as a brand-new isolated conversation with no prior memory.',
-    'Keep the user language consistent with the input prompt.',
-    'Use preserve when the prompt is already structurally sound; use rebuild when it is weak.',
-    'Required JSON fields: optimizedPrompt, strategy, scoreBefore, majorChanges, mve, deadEndSignals.',
-    'Keep majorChanges and deadEndSignals concise. Prefer 3-6 short items, not long essays.',
-    'Rule pack SKILL.md:',
-    input.pack.skillMd,
-    'Scoring rubric:',
-    input.pack.rubricMd,
-    'Universal rebuild template:',
-    input.pack.templateMd,
-  ].join('\n\n')
+  const system = getCompiledOptimizerSystemPrompt(input.pack)
 
-  const compactedFeedback = compactFeedback(input.previousFeedback)
   const steeringText = formatSteeringItemsForPrompt(input.pendingSteeringItems ?? [])
   const user = [
     `Threshold: ${input.threshold}`,
@@ -56,10 +44,6 @@ export function buildOptimizerPrompts(input: {
     formatGoalAnchorForPrompt(input.goalAnchor),
     'Current prompt:',
     input.currentPrompt,
-    'High-signal feedback from the previous round:',
-    compactedFeedback.length > 0
-      ? compactedFeedback.map((item, index) => `${index + 1}. ${item}`).join('\n')
-      : 'None',
     'User steering for the next round:',
     steeringText,
     'Return only JSON.',
@@ -75,20 +59,7 @@ export function buildJudgePrompts(input: {
   threshold: number
   judgeIndex: number
 }) {
-  const system = [
-    `You are isolated judge #${input.judgeIndex + 1} for Prompt Optimizer Studio.`,
-    'You are not the optimizer. Critique strictly and independently.',
-    'Assume this is a fresh new conversation with no prior chat context.',
-    'Goal fidelity is a hard gate. If the candidate drifts from the goal, loses the deliverable, or violates the drift guard, you must set hasMaterialIssues=true and keep the score below 90.',
-    'Use drift labels only from this fixed vocabulary: goal_changed, deliverable_missing, over_safety_generalization, constraint_loss, focus_shift.',
-    'Return JSON only with fields: score, hasMaterialIssues, summary, driftLabels, driftExplanation, findings, suggestedChanges.',
-    'Keep findings and suggestedChanges concise strings only. Each array should contain at most 6 short items.',
-    'If there is no drift, return driftLabels as [] and driftExplanation as an empty string.',
-    'Do not return nested objects inside findings or suggestedChanges.',
-    'Scoring rubric:',
-    input.pack.rubricMd,
-    'Do not rewrite the full prompt. Point out only material issues.',
-  ].join('\n\n')
+  const system = getCompiledJudgeSystemPrompt(input.pack, input.judgeIndex)
 
   const user = [
     `Passing threshold: ${input.threshold}`,
@@ -132,4 +103,68 @@ function formatSteeringItemsForPrompt(items: SteeringItem[]) {
   return items
     .map((item, index) => `${index + 1}. ${item.text}`)
     .join('\n')
+}
+
+function getCompiledOptimizerSystemPrompt(pack: PromptPackVersion) {
+  const cacheKey = `optimizer:${pack.hash}`
+  const cached = optimizerSystemPromptCache.get(cacheKey)
+  if (cached) {
+    return cached
+  }
+
+  const compiled = [
+    'You are Prompt Optimizer Studio. Always follow the rule pack and return strict JSON only.',
+    'Treat this run as a brand-new isolated conversation with no prior memory.',
+    'Keep the user language consistent with the input prompt.',
+    'Use preserve when the prompt is already structurally sound; use rebuild when it is weak.',
+    'Required JSON fields: optimizedPrompt, strategy, scoreBefore, majorChanges, mve, deadEndSignals.',
+    'Keep majorChanges and deadEndSignals concise. Prefer 3-6 short items, not long essays.',
+    'Rule pack SKILL.md:',
+    pack.skillMd,
+    'Scoring rubric:',
+    pack.rubricMd,
+    'Universal rebuild template:',
+    pack.templateMd,
+  ].join('\n\n')
+
+  optimizerSystemPromptCache.set(cacheKey, compiled)
+  return compiled
+}
+
+function getCompiledJudgeSystemPrompt(pack: PromptPackVersion, judgeIndex: number) {
+  const cacheKey = `judge:${pack.hash}:${judgeIndex}`
+  const cached = judgeSystemPromptCache.get(cacheKey)
+  if (cached) {
+    return cached
+  }
+
+  const compiled = [
+    `You are isolated judge #${judgeIndex + 1} for Prompt Optimizer Studio.`,
+    'You are not the optimizer. Critique strictly and independently.',
+    'Assume this is a fresh new conversation with no prior chat context.',
+    'Goal fidelity is a hard gate. If the candidate drifts from the goal, loses the deliverable, or violates the drift guard, you must set hasMaterialIssues=true and keep the score below 90.',
+    'Use drift labels only from this fixed vocabulary: goal_changed, deliverable_missing, over_safety_generalization, constraint_loss, focus_shift.',
+    'Return JSON only with fields: score, hasMaterialIssues, summary, driftLabels, driftExplanation, findings, suggestedChanges.',
+    'Keep findings and suggestedChanges concise strings only. Each array should contain at most 6 short items.',
+    'If there is no drift, return driftLabels as [] and driftExplanation as an empty string.',
+    'Do not return nested objects inside findings or suggestedChanges.',
+    'Scoring rubric:',
+    pack.rubricMd,
+    'Do not rewrite the full prompt. Point out only material issues.',
+  ].join('\n\n')
+
+  judgeSystemPromptCache.set(cacheKey, compiled)
+  return compiled
+}
+
+export function clearCompiledPromptSystemCacheForTests() {
+  optimizerSystemPromptCache.clear()
+  judgeSystemPromptCache.clear()
+}
+
+export function getCompiledPromptSystemCacheStatsForTests() {
+  return {
+    optimizerEntries: optimizerSystemPromptCache.size,
+    judgeEntries: judgeSystemPromptCache.size,
+  }
 }

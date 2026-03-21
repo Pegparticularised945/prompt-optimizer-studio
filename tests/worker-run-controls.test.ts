@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { resolvePostFailureStatus, resolvePostReviewStatus } from '../src/lib/server/worker'
+import {
+  resolveCompletionStateAfterRound,
+  resolvePostFailureStatus,
+  resolvePostReviewStatus,
+  resolveRoundExecutionMode,
+} from '../src/lib/server/worker'
 
 test('step mode pauses after exactly one completed round', () => {
   assert.equal(resolvePostReviewStatus({
@@ -71,4 +76,67 @@ test('hard failures remain failed when there is no usable result or the error is
     hasUsableResult: true,
     error: new Error('候选稿分数字段无效：scoreBefore'),
   }), 'failed')
+})
+
+test('uses sequential round execution for openai-compatible GPT-5 xhigh on both optimizer and judge', () => {
+  assert.equal(resolveRoundExecutionMode({
+    cpamcBaseUrl: 'http://localhost:8317/v1',
+    apiProtocol: 'auto',
+    optimizerModel: 'gpt-5.4',
+    judgeModel: 'gpt-5.4',
+    optimizerReasoningEffort: 'xhigh',
+    judgeReasoningEffort: 'xhigh',
+  }), 'sequential')
+})
+
+test('keeps parallel round execution outside the risky provider/model profile', () => {
+  assert.equal(resolveRoundExecutionMode({
+    cpamcBaseUrl: 'http://localhost:8317/v1',
+    apiProtocol: 'auto',
+    optimizerModel: 'gpt-5.4',
+    judgeModel: 'gpt-5.4',
+    optimizerReasoningEffort: 'xhigh',
+    judgeReasoningEffort: 'medium',
+  }), 'parallel')
+
+  assert.equal(resolveRoundExecutionMode({
+    cpamcBaseUrl: 'https://api.anthropic.com',
+    apiProtocol: 'anthropic-native',
+    optimizerModel: 'claude-sonnet-4.5',
+    judgeModel: 'claude-sonnet-4.5',
+    optimizerReasoningEffort: 'xhigh',
+    judgeReasoningEffort: 'xhigh',
+  }), 'parallel')
+})
+
+test('third passing review still completes when optimizer output is missing', () => {
+  assert.deepEqual(resolveCompletionStateAfterRound({
+    shouldComplete: true,
+    outputCandidateId: null,
+    currentCandidateId: 'candidate-r2',
+    existingFinalCandidateId: 'candidate-r1',
+    roundNumber: 3,
+    maxRounds: 20,
+    runMode: 'auto',
+    pauseRequestedAt: null,
+  }), {
+    status: 'completed',
+    finalCandidateId: 'candidate-r2',
+  })
+})
+
+test('completion fallback prefers current judged input over stale final candidate', () => {
+  assert.deepEqual(resolveCompletionStateAfterRound({
+    shouldComplete: true,
+    outputCandidateId: null,
+    currentCandidateId: 'candidate-r2',
+    existingFinalCandidateId: 'candidate-r1',
+    roundNumber: 3,
+    maxRounds: 20,
+    runMode: 'step',
+    pauseRequestedAt: '2026-03-22T00:00:00.000Z',
+  }), {
+    status: 'completed',
+    finalCandidateId: 'candidate-r2',
+  })
 })

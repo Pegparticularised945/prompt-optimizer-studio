@@ -1,4 +1,5 @@
 import type { ConversationPolicy } from "@/lib/engine/conversation-policy"
+import { normalizeEscapedMultilineText } from "@/lib/prompt-text"
 import type { JobStatus } from "@/lib/server/types"
 
 export type JobFailureKind = "infra" | "content"
@@ -60,7 +61,7 @@ export function getJobScoreMeta(job: {
     return null
   }
 
-  return isEnglish(locale) ? "No score generated yet" : "未产生成绩"
+  return isEnglish(locale) ? "No score yet" : "暂无分数"
 }
 export function getConversationPolicyLabel(policy: ConversationPolicy, locale: "zh-CN" | "en" = "zh-CN") {
   switch (policy) {
@@ -108,11 +109,11 @@ export function resolveLatestFullPrompt(
   rawPrompt: string,
   candidates: Array<{ optimizedPrompt: string }>,
 ) {
-  return candidates[0]?.optimizedPrompt ?? rawPrompt
+  return normalizeEscapedMultilineText(candidates[0]?.optimizedPrompt ?? rawPrompt)
 }
 
 export function getPromptPreview(latestPrompt: string, maxLength: number = 180) {
-  const compact = latestPrompt.replace(/\s+/g, " ").trim()
+  const compact = normalizeEscapedMultilineText(latestPrompt).replace(/\s+/g, " ").trim()
   if (compact.length <= maxLength) {
     return compact
   }

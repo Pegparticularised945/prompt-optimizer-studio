@@ -150,6 +150,7 @@ export function SettingsShell() {
           cpamcBaseUrl: form.cpamcBaseUrl,
           cpamcApiKey: form.cpamcApiKey,
           apiProtocol: form.apiProtocol,
+          defaultOptimizerModel: form.defaultTaskModel,
         }),
       })
       const payload = await response.json()

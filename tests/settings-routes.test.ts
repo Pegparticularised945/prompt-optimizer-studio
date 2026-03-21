@@ -177,6 +177,69 @@ test('settings connection test degrades gracefully when an OpenAI-compatible gat
   }
 })
 
+test('settings connection test rejects a public OpenRouter model catalog when inference auth still fails', async () => {
+  const originalCwd = process.cwd()
+  const originalDbPath = process.env.PROMPT_OPTIMIZER_DB_PATH
+  const originalFetch = global.fetch
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'po-settings-openrouter-auth-'))
+  process.env.PROMPT_OPTIMIZER_DB_PATH = path.join(tempDir, 'test.db')
+  process.chdir(tempDir)
+
+  try {
+    global.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url === 'https://openrouter.ai/api/v1/models') {
+        return new Response(JSON.stringify({
+          data: [
+            { id: 'openai/gpt-5.4' },
+          ],
+        }), { status: 200 })
+      }
+
+      if (url === 'https://openrouter.ai/api/v1/chat/completions') {
+        return new Response(JSON.stringify({
+          error: {
+            message: 'Missing Authentication header',
+            code: 401,
+          },
+        }), { status: 401 })
+      }
+
+      throw new Error(`Unexpected URL: ${url}`)
+    }) as typeof fetch
+
+    const { resetDbForTests } = await import('../src/lib/server/db')
+    resetDbForTests()
+
+    const testConnectionRoute = await import('../src/app/api/settings/test-connection/route')
+    const response = await testConnectionRoute.POST(new Request('http://localhost/api/settings/test-connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cpamcBaseUrl: 'https://openrouter.ai/api/v1',
+        cpamcApiKey: 'sk-test',
+        apiProtocol: 'openai-compatible',
+        defaultOptimizerModel: 'gpt-5.4',
+      }),
+    }))
+
+    assert.equal(response.status, 400)
+    const payload = (await response.json()) as { error: string }
+    assert.match(payload.error, /模型列表可访问/)
+    assert.match(payload.error, /推理鉴权失败/)
+    assert.match(payload.error, /openai\/gpt-5\.4/)
+  } finally {
+    global.fetch = originalFetch
+    process.chdir(originalCwd)
+    if (originalDbPath === undefined) {
+      delete process.env.PROMPT_OPTIMIZER_DB_PATH
+    } else {
+      process.env.PROMPT_OPTIMIZER_DB_PATH = originalDbPath
+    }
+  }
+})
+
 test('settings models POST degrades a missing OpenAI-compatible /models endpoint to an empty list', async () => {
   const originalCwd = process.cwd()
   const originalDbPath = process.env.PROMPT_OPTIMIZER_DB_PATH

@@ -1,9 +1,12 @@
 import type { ConversationPolicy } from '@/lib/engine/conversation-policy'
 import type { RoundJudgment } from '@/lib/engine/optimization-cycle'
+import type { ProviderRequestTelemetryEvent } from '@/lib/server/request-telemetry'
 import type { ReasoningEffort } from '@/lib/reasoning-effort'
 
 export type JobStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'manual_review' | 'cancelled'
 export type JobRunMode = 'auto' | 'step'
+export type RoundSemantics = 'legacy-output-judged' | 'input-judged-output-handed-off'
+export type RoundRunOutcome = 'settled' | 'judge_failed' | 'optimizer_failed' | 'both_failed' | 'legacy'
 export type ApiProtocol =
   | 'auto'
   | 'openai-compatible'
@@ -117,9 +120,36 @@ export interface JudgeRunRecord extends RoundJudgment {
   createdAt: string
 }
 
+export interface RoundRunRecord {
+  id: string
+  jobId: string
+  roundNumber: number
+  semantics: RoundSemantics
+  inputPrompt: string
+  inputCandidateId: string | null
+  outputCandidateId: string | null
+  displayScore: number | null
+  hasMaterialIssues: boolean | null
+  summary: string
+  driftLabels: string[]
+  driftExplanation: string
+  findings: string[]
+  suggestedChanges: string[]
+  outcome: RoundRunOutcome
+  optimizerError: string | null
+  judgeError: string | null
+  passStreakAfter: number
+  outputJudged: boolean
+  outputCandidate: CandidateRecord | null
+  optimizerTelemetry: ProviderRequestTelemetryEvent[]
+  judgeTelemetry: ProviderRequestTelemetryEvent[]
+  createdAt: string
+}
+
 export interface JobDetail {
   job: JobRecord
   candidates: Array<CandidateRecord & { judges: JudgeRunRecord[] }>
+  roundRuns: RoundRunRecord[]
 }
 
 export interface JobInput {

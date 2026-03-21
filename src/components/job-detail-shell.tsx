@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { JobDetailControlRoom, type JobDetailViewModel } from '@/components/job-detail-control-room'
 import { type RoundCandidateView } from '@/components/job-round-card'
+import { type RoundRunView } from '@/components/job-round-run-card'
 import { StudioFrame } from '@/components/studio-frame'
 import { useI18n, useLocaleText } from '@/lib/i18n'
 import type { ReasoningEffort } from '@/lib/reasoning-effort'
@@ -29,6 +30,8 @@ interface JudgeRun {
 interface Candidate extends RoundCandidateView {
   judges: JudgeRun[]
 }
+
+interface RoundRun extends RoundRunView {}
 
 interface ModelOption {
   id: string
@@ -86,6 +89,7 @@ interface JobDetailPayload {
     conversationPolicy: 'stateless' | 'pooled-3x'
   }
   candidates: Candidate[]
+  roundRuns: RoundRun[]
 }
 
 export function JobDetailShell({ jobId }: { jobId: string }) {
@@ -279,6 +283,7 @@ export function JobDetailShell({ jobId }: { jobId: string }) {
       modelsLabel: getTaskModelLabel(detail.job.optimizerModel, detail.job.judgeModel, locale),
       effectiveMaxRounds: detail.job.maxRoundsOverride ?? settings.maxRounds,
       candidates: detail.candidates,
+      roundRuns: detail.roundRuns ?? [],
     }
   }, [detail, effectiveRubricMd, effectiveRubricSource, jobId, locale, settings.maxRounds])
 

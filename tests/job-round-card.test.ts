@@ -7,66 +7,72 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { JobRoundCard, type RoundCandidateView } from '../src/components/job-round-card'
 
 const candidate: RoundCandidateView = {
-  id: 'candidate-1',
-  roundNumber: 7,
-  optimizedPrompt: 'FULL PROMPT CONTENT',
-  strategy: 'preserve',
-  scoreBefore: 88,
+  id: 'candidate-r2',
+  roundNumber: 2,
+  optimizedPrompt: 'ROUND 2 OUTPUT',
+  strategy: 'rebuild',
+  scoreBefore: 94,
   averageScore: 96,
-  majorChanges: ['Tightened the output contract.'],
-  mve: 'Run one dry check.',
-  deadEndSignals: ['Do not overfit the wording.'],
-  aggregatedIssues: ['Reduce jargon.'],
-  appliedSteeringItems: [
-    {
-      id: 'steer-1',
-      text: 'Keep the 老中医 judgment tone, but preserve the original conclusion.',
-      createdAt: '2026-03-09T10:00:00.000Z',
-    },
-  ],
-  judges: [
-    {
-      id: 'judge-1',
-      judgeIndex: 0,
-      score: 96,
-      hasMaterialIssues: false,
-      summary: '结构已经稳定，只剩轻微语气优化空间。',
-      driftLabels: [],
-      driftExplanation: '',
-      findings: ['Tone is slightly formal.'],
-      suggestedChanges: ['Warm up the tone.'],
-    },
-  ],
+  majorChanges: ['压缩输出协议。'],
+  mve: '用同一输入再跑一轮 judge。',
+  deadEndSignals: ['不要为了稳妥而丢交付。'],
+  aggregatedIssues: ['轻微语气偏硬。'],
+  appliedSteeringItems: [],
+  judges: [{
+    id: 'judge-r2',
+    judgeIndex: 0,
+    score: 96,
+    hasMaterialIssues: false,
+    summary: '这一版提示词整体稳定，可以继续观察下一轮。',
+    driftLabels: [],
+    driftExplanation: '',
+    findings: ['结构稳定。'],
+    suggestedChanges: ['继续压缩少量冗余措辞。'],
+  }],
 }
 
-test('round card stays compact by default but keeps an explicit details entry point', () => {
-  const html = renderToStaticMarkup(createElement(JobRoundCard, {
-    candidate,
-    expanded: false,
-    onToggle: () => {},
-  }))
-
-  assert.match(html, /第 7 轮/)
-  assert.match(html, /结构已经稳定，只剩轻微语气优化空间。/)
-  assert.match(html, /查看详情/)
-  assert.doesNotMatch(html, /查看优化后提示词/)
-  assert.doesNotMatch(html, /本轮采用的人工引导/)
-})
-
-test('round card still reveals full diagnostics and applied steering when expanded', () => {
+test('legacy round card uses clearer score and review labels', () => {
   const html = renderToStaticMarkup(createElement(JobRoundCard, {
     candidate,
     expanded: true,
     onToggle: () => {},
   }))
 
-  assert.match(html, /收起详情/)
-  assert.match(html, /查看优化后提示词/)
-  assert.match(html, /主要修改/)
-  assert.match(html, /复核结果/)
-  assert.match(html, /本轮采用的人工引导/)
-  assert.match(html, /Keep the 老中医 judgment tone, but preserve the original conclusion\./)
-  assert.match(html, /class="round-analysis-grid"/)
-  assert.match(html, /class="panel round-mve-panel"/)
-  assert.match(html, /class="judge-card round-review-panel"/)
+  assert.match(html, /这版提示词得分 96\.00/)
+  assert.match(html, /下一步最小验证/)
+  assert.match(html, /这轮改了什么/)
+  assert.match(html, /走偏风险/)
+  assert.match(html, /还要补的地方/)
+  assert.match(html, /这版提示词复核结果/)
+  assert.match(html, /这次复核发现的问题/)
+  assert.match(html, /下一步建议/)
+  assert.doesNotMatch(html, />MVE</)
+  assert.doesNotMatch(html, /复核分数/)
+})
+
+test('legacy round card hides empty panels and humanizes placeholder MVE copy', () => {
+  const html = renderToStaticMarkup(createElement(JobRoundCard, {
+    candidate: {
+      ...candidate,
+      majorChanges: [],
+      deadEndSignals: [],
+      aggregatedIssues: [],
+      mve: 'Run a single sample',
+      judges: [{
+        ...candidate.judges[0],
+        findings: [],
+        suggestedChanges: [],
+      }],
+    },
+    expanded: true,
+    onToggle: () => {},
+  }))
+
+  assert.match(html, /下一步最小验证/)
+  assert.match(html, /再抽 1 个样例快速复核/)
+  assert.doesNotMatch(html, /这轮改了什么/)
+  assert.doesNotMatch(html, /走偏风险/)
+  assert.doesNotMatch(html, /还要补的地方/)
+  assert.doesNotMatch(html, /这次复核发现的问题/)
+  assert.doesNotMatch(html, /下一步建议/)
 })

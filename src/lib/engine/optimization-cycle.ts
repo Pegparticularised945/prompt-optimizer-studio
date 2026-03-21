@@ -1,4 +1,5 @@
 import type { GoalAnchor, SteeringItem } from '@/lib/server/types'
+import type { ProviderRequestTelemetryEvent } from '@/lib/server/request-telemetry'
 
 export interface RoundJudgment {
   score: number
@@ -8,6 +9,7 @@ export interface RoundJudgment {
   driftExplanation: string
   findings: string[]
   suggestedChanges: string[]
+  requestTelemetry?: ProviderRequestTelemetryEvent[]
 }
 
 export interface OptimizationResult {
@@ -17,12 +19,12 @@ export interface OptimizationResult {
   majorChanges: string[]
   mve: string
   deadEndSignals: string[]
+  requestTelemetry?: ProviderRequestTelemetryEvent[]
 }
 
 export interface ModelAdapter {
   optimizePrompt(input: {
     currentPrompt: string
-    previousFeedback: string[]
     goalAnchor: GoalAnchor
     pendingSteeringItems?: SteeringItem[]
     threshold: number
@@ -34,17 +36,22 @@ export interface OptimizationCycleInput {
   adapter: ModelAdapter
   currentPrompt: string
   threshold: number
-  previousBestScore: number
-  previousFeedback?: string[]
   goalAnchor: GoalAnchor
   pendingSteeringItems?: SteeringItem[]
+  executionMode?: RoundExecutionMode
 }
 
-export interface OptimizationCycleResult extends OptimizationResult {
-  review: RoundJudgment
+export interface OptimizationCycleResult {
+  inputReview: RoundJudgment | null
+  optimization: OptimizationResult | null
   aggregatedIssues: string[]
-  bestScore: number
+  reviewError: Error | null
+  optimizationError: Error | null
+  reviewTelemetry: ProviderRequestTelemetryEvent[]
+  optimizationTelemetry: ProviderRequestTelemetryEvent[]
 }
+
+export type RoundExecutionMode = 'parallel' | 'sequential'
 
 export function summarizeJudgments(judgments: RoundJudgment[], threshold: number) {
   const passCount = judgments.filter((judgment) => judgment.score >= threshold).length
@@ -77,28 +84,46 @@ export async function runOptimizationCycle({
   adapter,
   currentPrompt,
   threshold,
-  previousBestScore,
-  previousFeedback = [],
   goalAnchor,
   pendingSteeringItems = [],
+  executionMode = 'parallel',
 }: OptimizationCycleInput): Promise<OptimizationCycleResult> {
-  const optimization = await adapter.optimizePrompt({
+  const optimize = () => adapter.optimizePrompt({
     currentPrompt,
-    previousFeedback,
     goalAnchor,
     pendingSteeringItems,
     threshold,
   })
+  const judge = () => adapter.judgePrompt(currentPrompt, 0, goalAnchor)
 
-  const review = await adapter.judgePrompt(optimization.optimizedPrompt, 0, goalAnchor)
-  const summary = summarizeJudgments([review], threshold)
-  const bestScore = summary.averageScore > previousBestScore ? summary.averageScore : previousBestScore
+  const [optimizationResult, reviewResult] = executionMode === 'sequential'
+    ? [
+        await settle(optimize),
+        await settle(judge),
+      ]
+    : await Promise.all([
+        settle(optimize),
+        settle(judge),
+      ])
+
+  const optimization = optimizationResult.status === 'fulfilled' ? optimizationResult.value : null
+  const review = reviewResult.status === 'fulfilled' ? reviewResult.value : null
+  const summary = review ? summarizeJudgments([review], threshold) : { aggregatedIssues: [] }
+  const reviewTelemetry = reviewResult.status === 'fulfilled'
+    ? reviewResult.value.requestTelemetry ?? []
+    : extractRequestTelemetry(reviewResult.reason)
+  const optimizationTelemetry = optimizationResult.status === 'fulfilled'
+    ? optimizationResult.value.requestTelemetry ?? []
+    : extractRequestTelemetry(optimizationResult.reason)
 
   return {
-    ...optimization,
-    review,
+    inputReview: review,
+    optimization,
     aggregatedIssues: summary.aggregatedIssues,
-    bestScore,
+    reviewError: reviewResult.status === 'rejected' ? normalizeCycleError(reviewResult.reason) : null,
+    optimizationError: optimizationResult.status === 'rejected' ? normalizeCycleError(optimizationResult.reason) : null,
+    reviewTelemetry,
+    optimizationTelemetry,
   }
 }
 
@@ -116,4 +141,34 @@ function uniqueOrdered(values: string[]) {
   }
 
   return result
+}
+
+function normalizeCycleError(error: unknown) {
+  if (error instanceof Error) {
+    return error
+  }
+  return new Error(String(error ?? 'Unknown cycle error'))
+}
+
+async function settle<T>(operation: () => Promise<T>): Promise<PromiseSettledResult<T>> {
+  try {
+    return {
+      status: 'fulfilled',
+      value: await operation(),
+    }
+  } catch (error) {
+    return {
+      status: 'rejected',
+      reason: error,
+    }
+  }
+}
+
+function extractRequestTelemetry(error: unknown) {
+  if (!error || typeof error !== 'object' || !('requestTelemetry' in error)) {
+    return []
+  }
+
+  const telemetry = (error as { requestTelemetry?: unknown }).requestTelemetry
+  return Array.isArray(telemetry) ? telemetry as ProviderRequestTelemetryEvent[] : []
 }

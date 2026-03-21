@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 
+import type { RoundJudgment } from '@/lib/engine/optimization-cycle'
 import { assignConversationGroup } from '@/lib/engine/conversation-policy'
 import { getJobDisplayError } from '@/lib/presentation'
 import { normalizeReasoningEffort } from '@/lib/reasoning-effort'
@@ -22,6 +23,7 @@ import {
 import { generateGoalAnchorWithModel } from '@/lib/server/model-adapter'
 import { ensurePromptPackVersion } from '@/lib/server/prompt-pack'
 import { compactFeedback } from '@/lib/server/prompting'
+import { normalizeProviderRequestTelemetryEvents, type ProviderRequestTelemetryEvent } from '@/lib/server/request-telemetry'
 import { getSettings, validateCpamcConnection, validateTaskDefaults } from '@/lib/server/settings'
 import type {
   CandidateRecord,
@@ -32,12 +34,14 @@ import type {
   JobRunMode,
   JobRecord,
   JudgeRunRecord,
+  RoundRunRecord,
   SteeringItem,
 } from '@/lib/server/types'
 
 export { getJobDisplayError }
 
 const JOB_CLAIM_STALE_AFTER_MS = 30_000
+const UNJUDGED_OUTPUT_AVERAGE_SCORE = 0
 
 export async function createJobs(inputs: JobInput[]) {
   const settings = getSettings()
@@ -304,16 +308,46 @@ export function getJobDetail(id: string): JobDetail | null {
   }
 
   const collapsedCandidateRows = collapseCandidateRowsByRound(candidateRows)
+  const candidates = collapsedCandidateRows.map((row) => {
+    const candidate = mapCandidateRow(row)
+    return {
+      ...candidate,
+      judges: judgesByCandidate.get(candidate.id) ?? [],
+    }
+  })
+  const roundRunRows = db.prepare(`
+    SELECT
+      id,
+      job_id,
+      round_number,
+      input_prompt,
+      input_candidate_id,
+      output_candidate_id,
+      displayed_score,
+      has_material_issues,
+      summary,
+      drift_labels_json,
+      drift_explanation,
+      findings_json,
+      suggested_changes_json,
+      round_status,
+      optimizer_error,
+      judge_error,
+      pass_streak_after,
+      optimizer_telemetry_json,
+      judge_telemetry_json,
+      created_at
+    FROM round_runs
+    WHERE job_id = ?
+    ORDER BY round_number DESC, datetime(created_at) DESC
+  `).all(id) as Record<string, unknown>[]
 
   return {
     job,
-    candidates: collapsedCandidateRows.map((row) => {
-      const candidate = mapCandidateRow(row)
-      return {
-        ...candidate,
-        judges: judgesByCandidate.get(candidate.id) ?? [],
-      }
-    }),
+    candidates,
+    roundRuns: roundRunRows.length > 0
+      ? mapRoundRunRows(roundRunRows, candidates)
+      : synthesizeLegacyRoundRuns(candidates),
   }
 }
 
@@ -829,19 +863,27 @@ export function getOptimizerSeed(jobId: string) {
   const job = requireJob(jobId)
   const db = getDb()
   const candidate = db.prepare(`
-    SELECT round_number, optimized_prompt
+    SELECT id, round_number, optimized_prompt
     FROM candidates
     WHERE job_id = ?
     ORDER BY round_number DESC, datetime(created_at) DESC
     LIMIT 1
   `).get(jobId) as Record<string, unknown> | undefined
+  const latestRound = db.prepare(`
+    SELECT COALESCE(MAX(round_number), 0) AS max_round
+    FROM round_runs
+    WHERE job_id = ?
+  `).get(jobId) as { max_round?: number } | undefined
 
   const legacyUpdatedAt = readLegacyNextRoundInstructionUpdatedAt(jobId)
 
   return {
+    currentCandidateId: candidate ? String(candidate.id) : null,
     currentPrompt: candidate ? String(candidate.optimized_prompt) : job.rawPrompt,
-    latestRoundNumber: candidate ? Number(candidate.round_number ?? 0) : 0,
-    previousFeedback: job.lastReviewPatch,
+    latestRoundNumber: Math.max(
+      candidate ? Number(candidate.round_number ?? 0) : 0,
+      Number(latestRound?.max_round ?? 0),
+    ),
     goalAnchor: job.goalAnchor,
     pendingSteeringItems: job.pendingSteeringItems,
     nextRoundInstruction: job.pendingSteeringItems[0]?.text ?? null,
@@ -906,18 +948,113 @@ export function createCandidateWithJudgesForActiveWorker(jobId: string, workerOw
       return null
     }
 
-    const maxRoundRow = db.prepare(`
-      SELECT COALESCE(MAX(round_number), 0) AS max_round
-      FROM candidates
-      WHERE job_id = ?
-    `).get(jobId) as { max_round?: number } | undefined
-
-    const nextRound = Math.max(Number(jobRow.current_round ?? 0), Number(maxRoundRow?.max_round ?? 0)) + 1
+    const nextRound = resolveNextRoundNumber(db, jobId, Number(jobRow.current_round ?? 0))
     insertCandidateAndJudgments(db, jobId, candidateId, nextRound, input, createdAt)
 
     db.exec('COMMIT')
     transactionOpen = false
     return { candidateId, roundNumber: nextRound }
+  } catch (error) {
+    if (transactionOpen) {
+      try {
+        db.exec('ROLLBACK')
+      } catch {
+      }
+    }
+    throw error
+  }
+}
+
+export function recordRoundRunForActiveWorker(jobId: string, workerOwnerId: string, input: {
+  currentPrompt: string
+  currentCandidateId?: string | null
+  optimization: {
+    optimizedPrompt: string
+    strategy: 'preserve' | 'rebuild'
+    scoreBefore: number
+    majorChanges: string[]
+    mve: string
+    deadEndSignals: string[]
+  } | null
+  review: RoundJudgment | null
+  aggregatedIssues?: string[]
+  appliedSteeringItems?: SteeringItem[]
+  outcome: RoundRunRecord['outcome']
+  optimizerError?: string | null
+  judgeError?: string | null
+  passStreakAfter?: number
+  optimizerTelemetry?: ProviderRequestTelemetryEvent[]
+  judgeTelemetry?: ProviderRequestTelemetryEvent[]
+}) {
+  if (input.optimization) {
+    assertFiniteScore(input.optimization.scoreBefore, 'optimization.scoreBefore')
+  }
+  if (input.review) {
+    assertFiniteScore(input.review.score, 'review.score')
+  }
+
+  const db = getDb()
+  const roundRunId = crypto.randomUUID()
+  const createdAt = new Date().toISOString()
+  let transactionOpen = false
+
+  try {
+    db.exec('BEGIN IMMEDIATE')
+    transactionOpen = true
+
+    const jobRow = db.prepare(`
+      SELECT status, active_worker_id, current_round
+      FROM jobs
+      WHERE id = ?
+    `).get(jobId) as { status?: string; active_worker_id?: string | null; current_round?: number } | undefined
+
+    if (!jobRow || String(jobRow.status ?? '') !== 'running' || String(jobRow.active_worker_id ?? '') !== workerOwnerId) {
+      db.exec('ROLLBACK')
+      transactionOpen = false
+      return null
+    }
+
+    const nextRound = resolveNextRoundNumber(db, jobId, Number(jobRow.current_round ?? 0))
+    const outputCandidateId = input.optimization
+      ? insertCandidateRecord(db, jobId, crypto.randomUUID(), nextRound, {
+        optimizedPrompt: input.optimization.optimizedPrompt,
+        strategy: input.optimization.strategy,
+        scoreBefore: input.optimization.scoreBefore,
+        averageScore: UNJUDGED_OUTPUT_AVERAGE_SCORE,
+        majorChanges: input.optimization.majorChanges,
+        mve: input.optimization.mve,
+        deadEndSignals: input.optimization.deadEndSignals,
+        aggregatedIssues: input.aggregatedIssues ?? [],
+        appliedSteeringItems: input.appliedSteeringItems ?? [],
+      }, createdAt)
+      : null
+
+    insertRoundRunRecord(db, {
+      id: roundRunId,
+      jobId,
+      roundNumber: nextRound,
+      inputPrompt: input.currentPrompt,
+      inputCandidateId: input.currentCandidateId ?? null,
+      outputCandidateId,
+      displayScore: input.review?.score ?? null,
+      hasMaterialIssues: input.review?.hasMaterialIssues ?? null,
+      summary: input.review?.summary ?? '',
+      driftLabels: input.review?.driftLabels ?? [],
+      driftExplanation: input.review?.driftExplanation ?? '',
+      findings: input.review?.findings ?? [],
+      suggestedChanges: input.review?.suggestedChanges ?? [],
+      outcome: input.outcome,
+      optimizerError: input.optimizerError ?? null,
+      judgeError: input.judgeError ?? null,
+      passStreakAfter: input.passStreakAfter ?? 0,
+      optimizerTelemetry: input.optimizerTelemetry ?? [],
+      judgeTelemetry: input.judgeTelemetry ?? [],
+      createdAt,
+    })
+
+    db.exec('COMMIT')
+    transactionOpen = false
+    return { roundRunId, roundNumber: nextRound, outputCandidateId }
   } catch (error) {
     if (transactionOpen) {
       try {
@@ -960,37 +1097,17 @@ function insertCandidateAndJudgments(
   },
   createdAt: string,
 ) {
-  db.prepare(`
-    INSERT INTO candidates (
-      id,
-      job_id,
-      round_number,
-      optimized_prompt,
-      strategy,
-      score_before,
-      average_score,
-      major_changes_json,
-      mve,
-      dead_end_signals_json,
-      aggregated_issues_json,
-      applied_steering_json,
-      created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    candidateId,
-    jobId,
-    roundNumber,
-    input.optimizedPrompt,
-    input.strategy,
-    input.scoreBefore,
-    input.averageScore,
-    JSON.stringify(compactFeedback(input.majorChanges, { maxItems: 6, maxItemLength: 180 })),
-    input.mve,
-    JSON.stringify(compactFeedback(input.deadEndSignals, { maxItems: 6, maxItemLength: 140 })),
-    JSON.stringify(compactFeedback(input.aggregatedIssues, { maxItems: 8, maxItemLength: 180 })),
-    serializeSteeringItems(input.appliedSteeringItems ?? []),
-    createdAt,
-  )
+  insertCandidateRecord(db, jobId, candidateId, roundNumber, {
+    optimizedPrompt: input.optimizedPrompt,
+    strategy: input.strategy,
+    scoreBefore: input.scoreBefore,
+    averageScore: input.averageScore,
+    majorChanges: input.majorChanges,
+    mve: input.mve,
+    deadEndSignals: input.deadEndSignals,
+    aggregatedIssues: input.aggregatedIssues,
+    appliedSteeringItems: input.appliedSteeringItems ?? [],
+  }, createdAt)
 
   for (const judgment of input.judgments) {
     db.prepare(`
@@ -1023,6 +1140,127 @@ function insertCandidateAndJudgments(
       judgment.createdAt,
     )
   }
+}
+
+function insertCandidateRecord(
+  db: DatabaseSync,
+  jobId: string,
+  candidateId: string,
+  roundNumber: number,
+  input: {
+    optimizedPrompt: string
+    strategy: 'preserve' | 'rebuild'
+    scoreBefore: number
+    averageScore: number
+    majorChanges: string[]
+    mve: string
+    deadEndSignals: string[]
+    aggregatedIssues: string[]
+    appliedSteeringItems: SteeringItem[]
+  },
+  createdAt: string,
+) {
+  db.prepare(`
+    INSERT INTO candidates (
+      id,
+      job_id,
+      round_number,
+      optimized_prompt,
+      strategy,
+      score_before,
+      average_score,
+      major_changes_json,
+      mve,
+      dead_end_signals_json,
+      aggregated_issues_json,
+      applied_steering_json,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    candidateId,
+    jobId,
+    roundNumber,
+    input.optimizedPrompt,
+    input.strategy,
+    input.scoreBefore,
+    input.averageScore,
+    JSON.stringify(compactFeedback(input.majorChanges, { maxItems: 6, maxItemLength: 180 })),
+    input.mve,
+    JSON.stringify(compactFeedback(input.deadEndSignals, { maxItems: 6, maxItemLength: 140 })),
+    JSON.stringify(compactFeedback(input.aggregatedIssues, { maxItems: 8, maxItemLength: 180 })),
+    serializeSteeringItems(input.appliedSteeringItems),
+    createdAt,
+  )
+  return candidateId
+}
+
+function insertRoundRunRecord(db: DatabaseSync, input: {
+  id: string
+  jobId: string
+  roundNumber: number
+  inputPrompt: string
+  inputCandidateId: string | null
+  outputCandidateId: string | null
+  displayScore: number | null
+  hasMaterialIssues: boolean | null
+  summary: string
+  driftLabels: string[]
+  driftExplanation: string
+  findings: string[]
+  suggestedChanges: string[]
+  outcome: RoundRunRecord['outcome']
+  optimizerError: string | null
+  judgeError: string | null
+  passStreakAfter: number
+  optimizerTelemetry: ProviderRequestTelemetryEvent[]
+  judgeTelemetry: ProviderRequestTelemetryEvent[]
+  createdAt: string
+}) {
+  db.prepare(`
+    INSERT INTO round_runs (
+      id,
+      job_id,
+      round_number,
+      input_prompt,
+      input_candidate_id,
+      output_candidate_id,
+      displayed_score,
+      has_material_issues,
+      summary,
+      drift_labels_json,
+      drift_explanation,
+      findings_json,
+      suggested_changes_json,
+      round_status,
+      optimizer_error,
+      judge_error,
+      pass_streak_after,
+      optimizer_telemetry_json,
+      judge_telemetry_json,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    input.id,
+    input.jobId,
+    input.roundNumber,
+    input.inputPrompt,
+    input.inputCandidateId,
+    input.outputCandidateId,
+    input.displayScore,
+    input.hasMaterialIssues === null ? null : input.hasMaterialIssues ? 1 : 0,
+    input.summary,
+    JSON.stringify(compactFeedback(input.driftLabels, { maxItems: 3, maxItemLength: 60 })),
+    input.driftExplanation,
+    JSON.stringify(compactFeedback(input.findings, { maxItems: 6, maxItemLength: 180 })),
+    JSON.stringify(compactFeedback(input.suggestedChanges, { maxItems: 6, maxItemLength: 180 })),
+    input.outcome,
+    input.optimizerError,
+    input.judgeError,
+    input.passStreakAfter,
+    JSON.stringify(input.optimizerTelemetry),
+    JSON.stringify(input.judgeTelemetry),
+    input.createdAt,
+  )
 }
 
 export function updateJobProgress(jobId: string, input: {
@@ -1070,6 +1308,20 @@ export function heartbeatJobClaim(jobId: string, workerOwnerId: string) {
   `).run(new Date().toISOString(), jobId, workerOwnerId)
 }
 
+export function releaseJobClaim(jobId: string, workerOwnerId: string) {
+  const db = getDb()
+  const result = db.prepare(`
+    UPDATE jobs
+    SET active_worker_id = NULL,
+        worker_heartbeat_at = NULL
+    WHERE id = ?
+      AND status = 'running'
+      AND active_worker_id = ?
+  `).run(jobId, workerOwnerId)
+
+  return result.changes > 0
+}
+
 export function claimNextRunnableJob(workerOwnerId: string) {
   const db = getDb()
   const now = new Date().toISOString()
@@ -1087,7 +1339,7 @@ export function claimNextRunnableJob(workerOwnerId: string) {
            OR worker_heartbeat_at <= ?
          )
        )
-    ORDER BY CASE status WHEN 'running' THEN 0 ELSE 1 END, datetime(created_at) ASC
+    ORDER BY datetime(updated_at) ASC, datetime(created_at) ASC
     LIMIT 1
   `).get(staleBefore) as { id?: string } | undefined
 
@@ -1525,6 +1777,25 @@ function resolveEffectiveMaxRounds(job: Pick<JobRecord, 'maxRoundsOverride'>, de
   return job.maxRoundsOverride ?? defaultMaxRounds
 }
 
+function resolveNextRoundNumber(db: DatabaseSync, jobId: string, currentRound: number) {
+  const maxCandidateRow = db.prepare(`
+    SELECT COALESCE(MAX(round_number), 0) AS max_round
+    FROM candidates
+    WHERE job_id = ?
+  `).get(jobId) as { max_round?: number } | undefined
+  const maxRoundRunRow = db.prepare(`
+    SELECT COALESCE(MAX(round_number), 0) AS max_round
+    FROM round_runs
+    WHERE job_id = ?
+  `).get(jobId) as { max_round?: number } | undefined
+
+  return Math.max(
+    currentRound,
+    Number(maxCandidateRow?.max_round ?? 0),
+    Number(maxRoundRunRow?.max_round ?? 0),
+  ) + 1
+}
+
 function mapJobRow(row: Record<string, unknown>): JobRecord {
   return {
     id: String(row.id),
@@ -1591,6 +1862,99 @@ function collapseCandidateRowsByRound(rows: Record<string, unknown>[]) {
   return result
 }
 
+function mapRoundRunRows(
+  rows: Record<string, unknown>[],
+  candidates: Array<CandidateRecord & { judges: JudgeRunRecord[] }>,
+): RoundRunRecord[] {
+  const candidatesById = new Map(candidates.map((candidate) => [candidate.id, candidate]))
+  const judgedCandidateIds = new Set(
+    rows
+      .map((row) => row.input_candidate_id ? String(row.input_candidate_id) : null)
+      .filter((value): value is string => Boolean(value)),
+  )
+
+  return rows.map((row) => {
+    const outputCandidateId = row.output_candidate_id ? String(row.output_candidate_id) : null
+    return {
+      id: String(row.id),
+      jobId: String(row.job_id),
+      roundNumber: Number(row.round_number),
+      semantics: 'input-judged-output-handed-off',
+      inputPrompt: String(row.input_prompt ?? ''),
+      inputCandidateId: row.input_candidate_id ? String(row.input_candidate_id) : null,
+      outputCandidateId,
+      displayScore: row.displayed_score === null || row.displayed_score === undefined
+        ? null
+        : Number(row.displayed_score),
+      hasMaterialIssues: row.has_material_issues === null || row.has_material_issues === undefined
+        ? null
+        : Boolean(row.has_material_issues),
+      summary: String(row.summary ?? ''),
+      driftLabels: parseJsonArray(row.drift_labels_json),
+      driftExplanation: row.drift_explanation ? String(row.drift_explanation) : '',
+      findings: parseJsonArray(row.findings_json),
+      suggestedChanges: parseJsonArray(row.suggested_changes_json),
+      outcome: (row.round_status ?? 'settled') as RoundRunRecord['outcome'],
+      optimizerError: row.optimizer_error ? String(row.optimizer_error) : null,
+      judgeError: row.judge_error ? String(row.judge_error) : null,
+      passStreakAfter: Number(row.pass_streak_after ?? 0),
+      outputJudged: outputCandidateId ? judgedCandidateIds.has(outputCandidateId) : false,
+      outputCandidate: outputCandidateId
+        ? sanitizeInputJudgedOutputCandidate(candidatesById.get(outputCandidateId) ?? null)
+        : null,
+      optimizerTelemetry: normalizeProviderRequestTelemetryEvents(parseJsonValue(row.optimizer_telemetry_json)),
+      judgeTelemetry: normalizeProviderRequestTelemetryEvents(parseJsonValue(row.judge_telemetry_json)),
+      createdAt: String(row.created_at),
+    }
+  })
+}
+
+function sanitizeInputJudgedOutputCandidate(
+  candidate: (CandidateRecord & { judges: JudgeRunRecord[] }) | null,
+): CandidateRecord | null {
+  if (!candidate) {
+    return null
+  }
+
+  return {
+    ...candidate,
+    averageScore: UNJUDGED_OUTPUT_AVERAGE_SCORE,
+  }
+}
+
+function synthesizeLegacyRoundRuns(
+  candidates: Array<CandidateRecord & { judges: JudgeRunRecord[] }>,
+): RoundRunRecord[] {
+  return candidates.map((candidate) => {
+    const review = candidate.judges[0] ?? null
+    return {
+      id: `legacy-${candidate.id}`,
+      jobId: candidate.jobId,
+      roundNumber: candidate.roundNumber,
+      semantics: 'legacy-output-judged',
+      inputPrompt: candidate.optimizedPrompt,
+      inputCandidateId: candidate.id,
+      outputCandidateId: candidate.id,
+      displayScore: review?.score ?? candidate.averageScore,
+      hasMaterialIssues: review?.hasMaterialIssues ?? null,
+      summary: review?.summary ?? '',
+      driftLabels: review?.driftLabels ?? [],
+      driftExplanation: review?.driftExplanation ?? '',
+      findings: review?.findings ?? [],
+      suggestedChanges: review?.suggestedChanges ?? [],
+      outcome: 'legacy',
+      optimizerError: null,
+      judgeError: null,
+      passStreakAfter: 0,
+      outputJudged: true,
+      outputCandidate: candidate,
+      optimizerTelemetry: [],
+      judgeTelemetry: [],
+      createdAt: candidate.createdAt,
+    }
+  })
+}
+
 function mapCandidateRow(row: Record<string, unknown>): CandidateRecord {
   return {
     id: String(row.id),
@@ -1633,6 +1997,18 @@ function parseJsonArray(value: unknown) {
   try {
     const parsed = JSON.parse(value)
     return Array.isArray(parsed) ? parsed.map((item) => String(item)) : []
+  } catch {
+    return []
+  }
+}
+
+function parseJsonValue(value: unknown) {
+  if (typeof value !== 'string' || !value) {
+    return []
+  }
+
+  try {
+    return JSON.parse(value)
   } catch {
     return []
   }

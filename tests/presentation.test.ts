@@ -29,6 +29,12 @@ test('latest full prompt falls back to raw prompt when no candidate exists', () 
   assert.equal(resolveLatestFullPrompt('raw prompt', []), 'raw prompt')
 })
 
+test('latest full prompt decodes stored double-escaped multiline candidates for display', () => {
+  assert.equal(resolveLatestFullPrompt('raw prompt', [
+    { optimizedPrompt: '# 角色\\n你是一名提示词优化师。\\n\\n## 目标\\n输出最终版本。' },
+  ]), '# 角色\n你是一名提示词优化师。\n\n## 目标\n输出最终版本。')
+})
+
 test('prompt preview compresses the latest full prompt for card display', () => {
   const preview = getPromptPreview('Line one.\n\nLine two with more details.\n\nLine three.', 24)
   assert.equal(preview, 'Line one. Line two with...')
@@ -43,7 +49,7 @@ test('job score display hides missing scores until a candidate exists', () => {
   assert.equal(getJobScoreMeta({
     currentRound: 0,
     candidateCount: 0,
-  }), '未产生成绩')
+  }), '暂无分数')
 })
 
 test('job score display keeps numeric scores once a candidate exists', () => {

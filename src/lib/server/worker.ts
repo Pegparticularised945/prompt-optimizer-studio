@@ -1,25 +1,33 @@
-import { nextPassStreak, runOptimizationCycle, shouldFinalizeAfterReview } from '@/lib/engine/optimization-cycle'
+import {
+  nextPassStreak,
+  runOptimizationCycle,
+  shouldFinalizeAfterReview,
+  type RoundExecutionMode,
+} from '@/lib/engine/optimization-cycle'
+import { isGpt5FamilyModel, normalizeReasoningEffort } from '@/lib/reasoning-effort'
 import { CpamcModelAdapter } from '@/lib/server/model-adapter'
 import {
   applyPendingJobModels,
   claimNextRunnableJob,
   consumePendingSteeringItems,
-  createCandidateWithJudgesForActiveWorker,
   finalizeCancelledJob,
   getJobById,
   getOptimizerSeed,
   heartbeatJobClaim,
+  releaseJobClaim,
+  recordRoundRunForActiveWorker,
   updateJobProgress,
   updateJobReviewState,
 } from '@/lib/server/jobs'
-import { getPromptPackVersion } from '@/lib/server/prompt-pack'
+import { getPromptPackVersion, withPromptPackRubricOverride } from '@/lib/server/prompt-pack'
 import { getSettings, validateCpamcConnection } from '@/lib/server/settings'
-import type { JobRunMode, JobStatus, JudgeRunRecord } from '@/lib/server/types'
+import type { JobRunMode, JobStatus } from '@/lib/server/types'
 import {
   createWorkerRuntimeState,
   resolveStableWorkerOwnerId,
   shouldReplaceWorkerRuntime,
 } from '@/lib/server/worker-runtime'
+import { inferApiProtocol } from '@/lib/server/provider-adapter'
 
 const globalWorkerState = globalThis as typeof globalThis & {
   __promptOptimizerWorker?: ReturnType<typeof createWorkerRuntimeState>
@@ -87,6 +95,70 @@ export function resolvePostFailureStatus(input: {
   }
 
   return input.runMode === 'step' ? 'paused' : 'manual_review'
+}
+
+export function shouldYieldAfterRound(status: JobStatus) {
+  return status === 'running'
+}
+
+export function resolveCompletionStateAfterRound(input: {
+  shouldComplete: boolean
+  outputCandidateId: string | null
+  currentCandidateId: string | null
+  existingFinalCandidateId: string | null
+  roundNumber: number
+  maxRounds: number
+  runMode: JobRunMode
+  pauseRequestedAt: string | null
+}) {
+  const result = resolveRoundCommitState({
+    shouldComplete: input.shouldComplete,
+    hasReview: true,
+    outputCandidateId: input.outputCandidateId,
+    currentCandidateId: input.currentCandidateId,
+    finalCandidateId: input.existingFinalCandidateId,
+    roundNumber: input.roundNumber,
+    maxRounds: input.maxRounds,
+    runMode: input.runMode,
+    pauseRequestedAt: input.pauseRequestedAt,
+    optimizationError: null,
+    reviewError: null,
+  })
+
+  return {
+    status: result.status,
+    finalCandidateId: result.finalCandidateId,
+  }
+}
+
+export function resolveRoundExecutionMode(input: {
+  cpamcBaseUrl: string
+  apiProtocol: 'auto' | 'openai-compatible' | 'anthropic-native' | 'gemini-native' | 'mistral-native' | 'cohere-native'
+  optimizerModel: string
+  judgeModel: string
+  optimizerReasoningEffort: string
+  judgeReasoningEffort: string
+}): RoundExecutionMode {
+  const protocol = input.apiProtocol !== 'auto'
+    ? input.apiProtocol
+    : inferApiProtocol(input.cpamcBaseUrl)
+
+  if (protocol !== 'openai-compatible') {
+    return 'parallel'
+  }
+
+  if (!isGpt5FamilyModel(input.optimizerModel) || !isGpt5FamilyModel(input.judgeModel)) {
+    return 'parallel'
+  }
+
+  if (
+    normalizeReasoningEffort(input.optimizerReasoningEffort) !== 'xhigh'
+    || normalizeReasoningEffort(input.judgeReasoningEffort) !== 'xhigh'
+  ) {
+    return 'parallel'
+  }
+
+  return 'sequential'
 }
 
 async function pumpQueue() {
@@ -159,9 +231,9 @@ async function runJob(jobId: string) {
       const maxRounds = activeJob.maxRoundsOverride ?? settings.maxRounds
 
       const {
+        currentCandidateId,
         currentPrompt,
         latestRoundNumber,
-        previousFeedback,
         goalAnchor,
         pendingSteeringItems,
       } = getOptimizerSeed(jobId)
@@ -178,11 +250,19 @@ async function runJob(jobId: string) {
       }
 
       const pack = getPromptPackVersion(activeJob.packVersionId)
-      const effectiveRubric = activeJob.customRubricMd || settings.customRubricMd
-      const effectivePack = effectiveRubric
-        ? { ...pack, rubricMd: effectiveRubric }
-        : pack
+      const effectivePack = withPromptPackRubricOverride(
+        pack,
+        activeJob.customRubricMd || settings.customRubricMd,
+      )
       const adapter = new CpamcModelAdapter(settings, effectivePack, {
+        optimizerModel: activeJob.optimizerModel,
+        judgeModel: activeJob.judgeModel,
+        optimizerReasoningEffort: activeJob.optimizerReasoningEffort,
+        judgeReasoningEffort: activeJob.judgeReasoningEffort,
+      })
+      const executionMode = resolveRoundExecutionMode({
+        cpamcBaseUrl: settings.cpamcBaseUrl,
+        apiProtocol: settings.apiProtocol,
         optimizerModel: activeJob.optimizerModel,
         judgeModel: activeJob.judgeModel,
         optimizerReasoningEffort: activeJob.optimizerReasoningEffort,
@@ -192,81 +272,79 @@ async function runJob(jobId: string) {
         adapter,
         currentPrompt,
         threshold: settings.scoreThreshold,
-        previousBestScore: activeJob.bestAverageScore,
-        previousFeedback,
         goalAnchor,
         pendingSteeringItems,
+        executionMode,
       })
 
-      const review = result.review
-      const judgments: JudgeRunRecord[] = [
-        {
-          id: crypto.randomUUID(),
-          jobId,
-          candidateId: '',
-          judgeIndex: 0,
-          score: review.score,
-          hasMaterialIssues: review.hasMaterialIssues,
-          summary: review.summary,
-          driftLabels: review.driftLabels,
-          driftExplanation: review.driftExplanation,
-          findings: review.findings,
-          suggestedChanges: review.suggestedChanges,
-          createdAt: new Date().toISOString(),
-        },
-      ]
-
-      const committedCandidate = createCandidateWithJudgesForActiveWorker(jobId, WORKER_OWNER_ID, {
-        optimizedPrompt: result.optimizedPrompt,
-        strategy: result.strategy,
-        scoreBefore: result.scoreBefore,
-        averageScore: review.score,
-        majorChanges: result.majorChanges,
-        mve: result.mve,
-        deadEndSignals: result.deadEndSignals,
+      const review = result.inputReview
+      const passStreak = review
+        ? nextPassStreak(activeJob.passStreak, review, settings.scoreThreshold)
+        : 0
+      const roundOutcome = resolveRoundOutcome(result.optimization, review)
+      const committedRound = recordRoundRunForActiveWorker(jobId, WORKER_OWNER_ID, {
+        currentPrompt,
+        currentCandidateId,
+        optimization: result.optimization,
+        review,
         aggregatedIssues: result.aggregatedIssues,
         appliedSteeringItems: pendingSteeringItems,
-        judgments,
+        outcome: roundOutcome,
+        optimizerError: result.optimizationError?.message ?? null,
+        judgeError: result.reviewError?.message ?? null,
+        passStreakAfter: passStreak,
+        optimizerTelemetry: result.optimizationTelemetry,
+        judgeTelemetry: result.reviewTelemetry,
       })
-      if (!committedCandidate) {
+      if (!committedRound) {
         return
       }
 
-      const { candidateId, roundNumber } = committedCandidate
+      const { outputCandidateId, roundNumber } = committedRound
       const latestJob = getJobById(jobId)
       if (latestJob?.cancelRequestedAt) {
         finalizeCancelledJob(jobId)
         return
       }
 
-      const passStreak = nextPassStreak(activeJob.passStreak, review, settings.scoreThreshold)
-      const shouldComplete = shouldFinalizeAfterReview(activeJob.passStreak, review, settings.scoreThreshold)
-      const finalStatus = resolvePostReviewStatus({
+      const shouldComplete = review
+        ? shouldFinalizeAfterReview(activeJob.passStreak, review, settings.scoreThreshold)
+        : false
+      const bestAverageScore = review
+        ? Math.max(activeJob.bestAverageScore, review.score)
+        : activeJob.bestAverageScore
+      const commitState = resolveRoundCommitState({
         shouldComplete,
+        hasReview: Boolean(review),
+        outputCandidateId,
+        currentCandidateId,
+        finalCandidateId: activeJob.finalCandidateId,
         roundNumber,
         maxRounds,
         runMode: activeJob.runMode,
         pauseRequestedAt: latestJob?.pauseRequestedAt ?? null,
+        optimizationError: result.optimizationError,
+        reviewError: result.reviewError,
       })
 
       updateJobReviewState(jobId, {
         passStreak,
-        bestAverageScore: result.bestScore,
-        lastReviewScore: review.score,
-        lastReviewPatch: result.aggregatedIssues,
+        bestAverageScore,
+        lastReviewScore: review?.score ?? activeJob.lastReviewScore,
+        lastReviewPatch: review ? result.aggregatedIssues : activeJob.lastReviewPatch,
         currentRound: roundNumber,
-        finalCandidateId: candidateId,
-        status: finalStatus,
-        errorMessage:
-          finalStatus === 'manual_review'
-            ? '达到最大轮数，仍未连续三次复核通过。'
-            : null,
+        finalCandidateId: commitState.finalCandidateId,
+        status: commitState.status,
+        errorMessage: commitState.errorMessage,
       })
-      consumePendingSteeringItems(jobId, pendingSteeringItems.map((item) => item.id))
-
-      if (finalStatus === 'completed' || finalStatus === 'manual_review' || finalStatus === 'paused') {
-        return
+      if (commitState.status === 'completed' || outputCandidateId) {
+        consumePendingSteeringItems(jobId, pendingSteeringItems.map((item) => item.id))
       }
+
+      if (shouldYieldAfterRound(commitState.status)) {
+        releaseJobClaim(jobId, WORKER_OWNER_ID)
+      }
+      return
     }
   } catch (error) {
     const failedJob = getJobById(jobId)
@@ -290,6 +368,101 @@ async function runJob(jobId: string) {
       errorMessage: error instanceof Error ? error.message : 'Unknown worker error',
     })
   }
+}
+
+function resolveRoundOutcome(
+  optimization: Awaited<ReturnType<typeof runOptimizationCycle>>['optimization'],
+  review: Awaited<ReturnType<typeof runOptimizationCycle>>['inputReview'],
+) {
+  if (optimization && review) {
+    return 'settled'
+  }
+  if (optimization) {
+    return 'judge_failed'
+  }
+  if (review) {
+    return 'optimizer_failed'
+  }
+  return 'both_failed'
+}
+
+export function resolveRoundCommitState(input: {
+  shouldComplete: boolean
+  hasReview: boolean
+  outputCandidateId: string | null
+  currentCandidateId: string | null
+  finalCandidateId: string | null
+  roundNumber: number
+  maxRounds: number
+  runMode: JobRunMode
+  pauseRequestedAt: string | null
+  optimizationError: Error | null
+  reviewError: Error | null
+}) {
+  const fallbackCandidateId = input.outputCandidateId ?? input.currentCandidateId ?? input.finalCandidateId
+
+  if (input.shouldComplete && input.hasReview && fallbackCandidateId) {
+    return {
+      status: 'completed' as const,
+      finalCandidateId: fallbackCandidateId,
+      errorMessage: null,
+    }
+  }
+
+  if (!input.hasReview || !input.outputCandidateId) {
+    return {
+      status: resolvePartialFailureStatus({
+        runMode: input.runMode,
+        hasOutputCandidate: Boolean(input.outputCandidateId),
+        hasReview: input.hasReview,
+      }),
+      finalCandidateId: fallbackCandidateId,
+      errorMessage: resolvePartialFailureMessage(input.optimizationError, input.reviewError),
+    }
+  }
+
+  const status = resolvePostReviewStatus({
+    shouldComplete: false,
+    roundNumber: input.roundNumber,
+    maxRounds: input.maxRounds,
+    runMode: input.runMode,
+    pauseRequestedAt: input.pauseRequestedAt,
+  })
+
+  return {
+    status,
+    finalCandidateId: input.outputCandidateId,
+    errorMessage:
+      status === 'manual_review'
+        ? '达到最大轮数，仍未连续三次复核通过。'
+        : null,
+  }
+}
+
+function resolvePartialFailureStatus(input: {
+  runMode: JobRunMode
+  hasOutputCandidate: boolean
+  hasReview: boolean
+}): JobStatus {
+  if (input.hasOutputCandidate) {
+    return input.runMode === 'step' ? 'paused' : 'manual_review'
+  }
+
+  if (input.hasReview) {
+    return 'failed'
+  }
+
+  return 'failed'
+}
+
+function resolvePartialFailureMessage(
+  optimizationError: Error | null,
+  reviewError: Error | null,
+) {
+  if (optimizationError && reviewError) {
+    return `${optimizationError.message} | ${reviewError.message}`
+  }
+  return optimizationError?.message ?? reviewError?.message ?? 'Round execution failed.'
 }
 
 function matchesInfraFailure(error: unknown) {

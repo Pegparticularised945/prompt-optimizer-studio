@@ -1,10 +1,15 @@
 import type { ModelAdapter, OptimizationResult, RoundJudgment } from '@/lib/engine/optimization-cycle'
+import { normalizeEscapedMultilineText } from '@/lib/prompt-text'
 import { normalizeGoalAnchor } from '@/lib/server/goal-anchor'
 import { normalizeGoalAnchorExplanation } from '@/lib/server/goal-anchor-explanation'
-import { createProviderAdapter } from '@/lib/server/provider-adapter'
-import { normalizeReasoningEffort, resolveReasoningEffortTimeoutMs } from '@/lib/reasoning-effort'
+import { createProviderAdapter, inferApiProtocol } from '@/lib/server/provider-adapter'
+import type { ProviderRequestLabel, ProviderRequestTelemetryEvent } from '@/lib/server/request-telemetry'
+import { isGpt5FamilyModel, normalizeReasoningEffort, resolveReasoningEffortTimeoutMs } from '@/lib/reasoning-effort'
 import type { GoalAnchor, GoalAnchorExplanation, PromptPackVersion, AppSettings, SteeringItem } from '@/lib/server/types'
 import { buildGoalAnchorPrompts, buildJudgePrompts, buildOptimizerPrompts } from '@/lib/server/prompting'
+
+const DEEP_ROUND_OPTIMIZER_RESPONSES_PROMPT_LENGTH = 2600
+const DEEP_ROUND_OPTIMIZER_RESPONSES_SYSTEM_LENGTH = 4200
 
 export class CpamcModelAdapter implements ModelAdapter {
   private readonly providerAdapter: ReturnType<typeof createProviderAdapter>
@@ -24,7 +29,6 @@ export class CpamcModelAdapter implements ModelAdapter {
 
   async optimizePrompt(input: {
     currentPrompt: string
-    previousFeedback: string[]
     goalAnchor: GoalAnchor
     pendingSteeringItems?: SteeringItem[]
     threshold: number
@@ -32,26 +36,33 @@ export class CpamcModelAdapter implements ModelAdapter {
     const { system, user } = buildOptimizerPrompts({
       pack: this.pack,
       currentPrompt: input.currentPrompt,
-      previousFeedback: input.previousFeedback,
       goalAnchor: input.goalAnchor,
       pendingSteeringItems: input.pendingSteeringItems,
       threshold: input.threshold,
     })
 
-    const payload = await this.requestJson(
+    const { payload, requestTelemetry } = await this.requestJson(
       this.models.optimizerModel,
       this.models.optimizerReasoningEffort ?? 'default',
       system,
       user,
       resolveReasoningEffortTimeoutMs(180_000, normalizeReasoningEffort(this.models.optimizerReasoningEffort ?? 'default')),
+      'optimizer',
+      resolveEndpointModeForOptimizer(this.settings.cpamcBaseUrl, {
+        currentPrompt: input.currentPrompt,
+        systemPrompt: system,
+        model: this.models.optimizerModel,
+        reasoningEffort: this.models.optimizerReasoningEffort ?? 'default',
+      }),
     )
     return {
-      optimizedPrompt: String(payload.optimizedPrompt ?? input.currentPrompt),
+      optimizedPrompt: normalizeOptimizedPromptValue(payload, input.currentPrompt),
       strategy: payload.strategy === 'preserve' ? 'preserve' : 'rebuild',
       scoreBefore: normalizeNumericScore(payload.scoreBefore, 0),
       majorChanges: normalizeTextArray(payload.majorChanges),
       mve: normalizeTextValue(payload.mve, 'Run a single-sample judge validation.'),
       deadEndSignals: normalizeTextArray(payload.deadEndSignals),
+      requestTelemetry,
     }
   }
 
@@ -68,12 +79,13 @@ export class CpamcModelAdapter implements ModelAdapter {
       judgeIndex,
     })
 
-    const payload = await this.requestJson(
+    const { payload, requestTelemetry } = await this.requestJson(
       this.models.judgeModel,
       this.models.judgeReasoningEffort ?? 'default',
       system,
       user,
       resolveReasoningEffortTimeoutMs(120_000, normalizeReasoningEffort(this.models.judgeReasoningEffort ?? 'default')),
+      'judge',
     )
     return {
       score: normalizeNumericScore(payload.score, 0),
@@ -83,6 +95,7 @@ export class CpamcModelAdapter implements ModelAdapter {
       driftExplanation: normalizeTextValue(payload.driftExplanation, ''),
       findings: normalizeTextArray(payload.findings),
       suggestedChanges: normalizeTextArray(payload.suggestedChanges),
+      requestTelemetry,
     }
   }
 
@@ -92,9 +105,58 @@ export class CpamcModelAdapter implements ModelAdapter {
     system: string,
     user: string,
     timeoutMs: number,
+    requestLabel: ProviderRequestLabel,
+    endpointMode: 'auto' | 'chat' | 'responses' | 'responses_preferred' = 'auto',
   ) {
-    return this.providerAdapter.requestJson({ model, reasoningEffort, system, user, timeoutMs })
+    const requestTelemetry: ProviderRequestTelemetryEvent[] = []
+
+    try {
+      const payload = await this.providerAdapter.requestJson({
+        model,
+        reasoningEffort,
+        system,
+        user,
+        timeoutMs,
+        requestLabel,
+        endpointMode,
+        telemetryCollector: (event) => requestTelemetry.push(event),
+      })
+
+      return { payload, requestTelemetry }
+    } catch (error) {
+      throw attachRequestTelemetry(error, requestTelemetry)
+    }
   }
+}
+
+function resolveEndpointModeForOptimizer(
+  baseUrl: string,
+  input: {
+    currentPrompt: string
+    systemPrompt: string
+    model: string
+    reasoningEffort: AppSettings['defaultOptimizerReasoningEffort']
+  },
+): 'auto' | 'responses_preferred' {
+  if (inferApiProtocol(baseUrl) !== 'openai-compatible') {
+    return 'auto'
+  }
+
+  if (!isGpt5FamilyModel(input.model)) {
+    return 'auto'
+  }
+
+  if (normalizeReasoningEffort(input.reasoningEffort) !== 'xhigh') {
+    return 'auto'
+  }
+
+  if (input.currentPrompt.length < DEEP_ROUND_OPTIMIZER_RESPONSES_PROMPT_LENGTH) {
+    if (input.systemPrompt.length < DEEP_ROUND_OPTIMIZER_RESPONSES_SYSTEM_LENGTH) {
+      return 'auto'
+    }
+  }
+
+  return 'responses_preferred'
 }
 
 export async function generateGoalAnchorWithModel(
@@ -103,18 +165,35 @@ export async function generateGoalAnchorWithModel(
   rawPrompt: string,
 ) {
   const { system, user } = buildGoalAnchorPrompts({ rawPrompt })
-  const payload = await createProviderAdapter(settings).requestJson({
+  const requestTelemetry: ProviderRequestTelemetryEvent[] = []
+  const providerAdapter = createProviderAdapter(settings)
+  const payload = await providerAdapter.requestJson({
     model,
     reasoningEffort: settings.defaultOptimizerReasoningEffort,
     system,
     user,
     timeoutMs: resolveReasoningEffortTimeoutMs(20_000, normalizeReasoningEffort(settings.defaultOptimizerReasoningEffort)),
     maxAttempts: 2,
+    requestLabel: 'goal_anchor',
+    telemetryCollector: (event) => requestTelemetry.push(event),
   })
   return {
     goalAnchor: normalizeGoalAnchor(payload as Partial<GoalAnchor>),
     explanation: normalizeGoalAnchorExplanation(payload as Partial<GoalAnchorExplanation>),
   }
+}
+
+function attachRequestTelemetry(error: unknown, requestTelemetry: ProviderRequestTelemetryEvent[]) {
+  if (error instanceof Error) {
+    ;(error as Error & { requestTelemetry?: ProviderRequestTelemetryEvent[] }).requestTelemetry = requestTelemetry
+    return error
+  }
+
+  const normalizedError = new Error(String(error ?? 'Unknown request error')) as Error & {
+    requestTelemetry?: ProviderRequestTelemetryEvent[]
+  }
+  normalizedError.requestTelemetry = requestTelemetry
+  return normalizedError
 }
 
 export function normalizeTextArray(value: unknown) {
@@ -134,6 +213,26 @@ function normalizeNumericScore(value: unknown, fallback: number) {
 function normalizeTextValue(value: unknown, fallback: string) {
   const normalized = normalizeTextItem(value)
   return normalized ?? fallback
+}
+
+function normalizeOptimizedPromptValue(payload: Record<string, unknown>, fallback: string) {
+  const preferredKeys = [
+    'optimizedPrompt',
+    'optimized_prompt',
+    'prompt',
+    'rewrittenPrompt',
+    'finalPrompt',
+    'candidatePrompt',
+  ]
+
+  for (const key of preferredKeys) {
+    const normalized = normalizeTextItem(payload[key])
+    if (normalized) {
+      return normalizeEscapedMultilineText(normalized)
+    }
+  }
+
+  return fallback
 }
 
 function normalizeTextItem(value: unknown): string | null {
