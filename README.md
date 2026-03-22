@@ -2,7 +2,7 @@
   <img src="public/logo.png" alt="Prompt Optimizer Studio logo" width="160" />
 </p>
 
-# Prompt Optimizer Studio（提示词优化工作台）
+# Prompt Optimizer Studio（自托管提示词优化工作台）
 
 **中文** | [英文](README_EN.md)
 
@@ -17,13 +17,19 @@
 
 > 当前公开仓库交付的是 `Self-Hosted / Server Edition（自托管服务端版）`，不是官方在线 SaaS，也不承诺自动找出“唯一最优 prompt”。
 
+**你会得到**
+
+- 一份可以直接复制使用的完整 prompt
+- 一套可暂停、可继续、可补引导的优化过程
+- 一条留在自己环境里的可检查运行链路
+
 <p align="center">
-  <a href="#三句话先看懂"><strong>✨ 先看懂</strong></a> ·
-  <a href="#你可以用它做什么"><strong>🧭 适用场景</strong></a> ·
-  <a href="#工作流程一眼看懂"><strong>🔄 工作流程</strong></a> ·
-  <a href="#页面截图"><strong>🖼️ 页面截图</strong></a> ·
-  <a href="#开始使用"><strong>🚀 开始使用</strong></a> ·
-  <a href="docs/deployment/docker-self-hosted.md"><strong>🐳 Docker 自托管</strong></a>
+  <a href="#三句话先看懂"><strong>先看懂</strong></a> ·
+  <a href="#你可以用它做什么"><strong>适用场景</strong></a> ·
+  <a href="#工作流程"><strong>工作流程</strong></a> ·
+  <a href="#页面截图"><strong>页面截图</strong></a> ·
+  <a href="#开始使用"><strong>开始使用</strong></a> ·
+  <a href="docs/deployment/docker-self-hosted.md"><strong>Docker 自托管</strong></a>
 </p>
 
 ## 三句话先看懂
@@ -43,7 +49,7 @@
 | 需要把结果交给同事或客户 | 最后拿到的是一份可以直接复制使用的完整 prompt，而不是内部 diff 日志 |
 | 想在自己的环境里接不同 provider / 模型 | 走自托管服务端路径，保留配置、运行参数和结果链路的可检查性 |
 
-## 工作流程一眼看懂
+## 工作流程
 
 ```mermaid
 flowchart LR

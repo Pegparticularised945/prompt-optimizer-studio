@@ -17,13 +17,19 @@ A **self-hosted** prompt-optimization workspace for people who still want contro
 
 > This repository ships the `Self-Hosted / Server Edition`. It is not an official hosted SaaS, and it does not claim to automatically prove a single globally optimal prompt.
 
+**What you get**
+
+- a copy-ready full prompt instead of patch fragments
+- an optimization loop you can pause, steer, continue, and resume
+- a runtime path you can inspect inside your own environment
+
 <p align="center">
-  <a href="#three-things-to-know-first"><strong>✨ First Look</strong></a> ·
-  <a href="#what-you-can-use-it-for"><strong>🧭 Use Cases</strong></a> ·
-  <a href="#how-it-works"><strong>🔄 Workflow</strong></a> ·
-  <a href="#screenshots"><strong>🖼️ Screenshots</strong></a> ·
-  <a href="#start-here"><strong>🚀 Start Here</strong></a> ·
-  <a href="docs/deployment/docker-self-hosted_EN.md"><strong>🐳 Docker Self-Hosted</strong></a>
+  <a href="#three-things-to-know-first"><strong>First Look</strong></a> ·
+  <a href="#what-you-can-use-it-for"><strong>Use Cases</strong></a> ·
+  <a href="#how-it-works"><strong>Workflow</strong></a> ·
+  <a href="#screenshots"><strong>Screenshots</strong></a> ·
+  <a href="#start-here"><strong>Start Here</strong></a> ·
+  <a href="docs/deployment/docker-self-hosted_EN.md"><strong>Docker Self-Hosted</strong></a>
 </p>
 
 ## Three Things to Know First
