@@ -29,9 +29,44 @@ Prompt Optimizer Studio turns prompt refinement into an operator-friendly pipeli
 
 ## Release Title
 
-`v0.1.6 - Provider Retry Boundary Fix`
+`v0.1.7 - Result Desk & Structure Governance Update`
 
 ## Release History
+
+### v0.1.7
+
+Release shape:
+
+- This release remains the **Self-Hosted / Server Edition**.
+- Data stays on the machine or deployment environment running the app.
+- The public release name is **`v0.1.7`** with no `hotfix` branding.
+- This release does not include an authoritative compare winner or the self-bootstrap experiment desk.
+
+Highlights:
+
+1. **A clearer result desk and round timeline**
+   - Job detail and round-run copy has been rewritten into more understandable operator-facing language.
+   - Labels such as “Previous prompt score”, “This version was scored later”, and “This version will be scored next round” now align with the current product semantics.
+   - Empty states, placeholder MVE copy, and raw upstream error exposure were cleaned up further.
+
+2. **Fixed stop logic for three consecutive passing rounds**
+   - Fixed cases where jobs kept opening another round even after satisfying the stop condition.
+   - Fixed cases where a job was incorrectly marked failed when the final passing round had no fresh optimizer output.
+   - Final delivery now closes correctly around the current public rule of three consecutive passing reviews.
+
+3. **A more consistent stable-rules and task-rubric flow**
+   - Auto-running job detail pages still expose the stable-rule adjustment entry.
+   - Pending steering can be turned into a stable-rule draft first and only becomes stable rules after an explicit save.
+   - Stable rules, pending steering, and task-level rubric overrides are explained more clearly in the UI.
+
+4. **Structure governance and compatibility hardening**
+   - Server boundaries are now explicit across `jobs / runtime / providers / settings / prompt-pack / db / goal-anchor`.
+   - The OpenAI-compatible `/responses` fallback regression is fixed and covered by regression tests.
+   - `check:architecture` and boundary tests now guard against falling back to root-level implicit dependencies and compatibility bridges.
+
+5. **Public prompt-pack cleanup**
+   - The default prompt-pack no longer exposes internal experiment or lineage labels.
+   - Public `Create / Debug / Review` mode-fidelity rules are preserved more clearly.
 
 ### v0.1.6
 
