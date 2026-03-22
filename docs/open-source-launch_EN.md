@@ -65,7 +65,7 @@ Highlights:
    - `check:architecture` and boundary tests now guard against falling back to root-level implicit dependencies and compatibility bridges.
 
 5. **Public prompt-pack cleanup**
-   - The default prompt-pack no longer exposes internal experiment or lineage labels.
+   - The default prompt-pack no longer exposes unnecessary version labels or extra technical markers.
    - Public `Create / Debug / Review` mode-fidelity rules are preserved more clearly.
 
 ### v0.1.6
