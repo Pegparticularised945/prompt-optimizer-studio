@@ -40,7 +40,7 @@ Release shape:
 - This release remains the **Self-Hosted / Server Edition**.
 - Data stays on the machine or deployment environment running the app.
 - The public release name is **`v0.1.7`** with no `hotfix` branding.
-- This release does not include an authoritative compare winner or the self-bootstrap experiment desk.
+- This release stays focused on public-path UX fixes, structure governance, and compatibility hardening.
 
 Highlights:
 
