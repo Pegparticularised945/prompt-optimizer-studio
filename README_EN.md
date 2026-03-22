@@ -13,20 +13,22 @@
   <a href="LICENSE"><img alt="AGPL-3.0 License" src="https://img.shields.io/badge/license-AGPL--3.0-1d3557?style=flat-square" /></a>
 </p>
 
-A **self-hosted** prompt-optimization workspace for people who still want control. You start with a draft prompt, the system pushes it through multi-round optimization and review, and you can step in whenever the run drifts. The deliverable is a **copy-ready full prompt**, not just a patch log.
+A **self-hosted** prompt-optimization workspace for teams and individuals who want visibility and control. You submit a draft prompt, the system keeps iterating around the current version, and you can pause, steer, continue one round, adjust stable rules, or resume auto when needed. The deliverable is a **copy-ready full prompt**, not just a patch log.
 
 > This repository ships the `Self-Hosted / Server Edition`. It is not an official hosted SaaS, and it does not claim to automatically prove a single globally optimal prompt.
 
 **What you get**
 
 - a copy-ready full prompt instead of patch fragments
-- an optimization loop you can pause, steer, continue, and resume
-- a runtime path you can inspect inside your own environment
+- a multi-round optimization flow you can pause, steer, and inspect
+- settings, runtime controls, and results that stay in your own environment
 
 <p align="center">
   <a href="#three-things-to-know-first"><strong>First Look</strong></a> ·
-  <a href="#what-you-can-use-it-for"><strong>Use Cases</strong></a> ·
   <a href="#how-it-works"><strong>Workflow</strong></a> ·
+  <a href="#what-one-round-actually-means"><strong>Round Semantics</strong></a> ·
+  <a href="#current-stop-rule"><strong>Stop Rule</strong></a> ·
+  <a href="#temporary-steering-and-stable-rules"><strong>Steering</strong></a> ·
   <a href="#screenshots"><strong>Screenshots</strong></a> ·
   <a href="#start-here"><strong>Start Here</strong></a> ·
   <a href="docs/deployment/docker-self-hosted_EN.md"><strong>Docker Self-Hosted</strong></a>
@@ -37,15 +39,15 @@ A **self-hosted** prompt-optimization workspace for people who still want contro
 | The question | The short answer |
 | --- | --- |
 | **What is it?** | A self-hosted workspace that turns prompt optimization into a pauseable, steerable, reviewable process |
-| **How does it run?** | Draft prompt → optimizer / reviewer rounds → human steering when needed → final full prompt |
-| **What is it not?** | Not just a diff viewer, and not a black box claiming it found the one globally best prompt |
+| **How does it run?** | The current prompt enters a round, the system reviews that current version and generates the next version, and the new version is reviewed in the next round |
+| **What is it not?** | Not just a diff viewer, and not a black box pretending it can stamp one final perfect answer for you |
 
 ## What You Can Use It For
 
 | If your situation looks like this | Prompt Optimizer Studio is better suited to |
 | --- | --- |
 | You have a draft prompt but it is not ready to hand off yet | Keep refining toward a usable full prompt instead of only showing patch fragments |
-| You want automatic multi-round improvement without losing control | Let optimizer and reviewer run while keeping pause, next-round steering, and one-round-continue controls available |
+| You want automatic multi-round improvement without losing control | Let the system keep moving while preserving pause, next-round steering, stable rules, and one-round-continue controls |
 | You need something you can pass to teammates or clients | End with a full prompt you can directly copy and use |
 | You want to connect your own providers and models | Run it as a self-hosted server path with inspectable settings, runtime, and result history |
 
@@ -53,31 +55,62 @@ A **self-hosted** prompt-optimization workspace for people who still want contro
 
 ```mermaid
 flowchart LR
-    A[Draft prompt] --> B[Start automated optimization loop]
-    B --> C[Optimizer produces next full prompt]
-    C --> D[Reviewer scores quality and checks drift]
-    D --> E{Target reached or stop rule hit?}
-    E -- No --> F{Need human steering?}
-    F -- No --> B
-    F -- Yes --> G[Pause / add next-round guidance / resume]
-    G --> B
-    E -- Yes --> H[Copy the final full prompt]
+    A[Submit a full draft prompt] --> B[Enter one scheduled round]
+    B --> C[Review the current input prompt]
+    B --> D[Generate the next full prompt]
+    C --> E{Three consecutive passing rounds?}
+    D --> F[Use the new prompt as the next round input]
+    E -- No --> F
+    F --> B
+    E -- Yes --> G[Deliver the latest usable full prompt]
 ```
 
-## Why It Feels Different From A Patch Viewer
+## What One Round Actually Means
 
-- **Full prompt first**
-  - The main deliverable is the latest full prompt, not a diff-oriented audit trail.
-- **Human steering stays in the main path**
-  - You can pause, steer, continue one round, or resume auto without restarting everything.
-- **Stop logic stays visible**
-  - Jobs keep moving until they pass or hit an explicit stopping condition.
-- **It tries to reduce silent drift**
-  - `goalAnchor`, drift checks, and reviewer isolation all help preserve task intent.
+The public product semantics are not "optimize first, then score the new output." A round actually works like this:
+
+| What happens inside one round | What it means |
+| --- | --- |
+| **The current full prompt enters the round** | That same prompt is both the review target and the base input for generating the next version |
+| **The review side checks the current input prompt** | The score shown for this round belongs to the prompt that entered the round |
+| **The optimizer generates the next full prompt** | The newly generated prompt is not scored in the same round; it is reviewed in the next round |
+| **Runtime chooses execution style** | Depending on provider capability and stability conditions, the two sides may run in parallel or sequentially |
+
+In short: **the score you see belongs to the current input prompt, while the output of the round becomes the next prompt.**
+
+## Current Stop Rule
+
+The current public stop rule is:
+
+- the user sets the **score threshold**
+- the system currently requires **three consecutive passing reviewed rounds**
+- a passing reviewed round means:
+  - `score >= scoreThreshold`
+  - and no material issues
+- on the third consecutive passing reviewed round:
+  - if the round also produced a new output, that new output becomes the final delivery
+  - if the round passed review but produced no new output, the already reviewed passing input becomes the final delivery
+- if the job hits `maxRounds` before that streak is complete, it stops at manual review instead of pretending to be done
+
+## Temporary Steering And Stable Rules
+
+These are two different concepts in the product:
+
+| Concept | Current behavior |
+| --- | --- |
+| **Next-round steering** | A one-time addition for the next round, absorbed by the optimizer in order |
+| **Stable rules** | Persistent constraints for later rounds, updated only after you explicitly save them |
+
+Additional notes:
+
+- the review side does not directly read your raw steering text; it only sees the prompt generated for the next round
+- you can select pending steering items, build a stable-rule draft, and then decide whether to save it
+- unselected or unsaved steering items do not silently become stable rules
+- if a one-time steering note gets written into the full prompt itself, later rounds inherit that through the prompt content, not because the system secretly keeps the steering item forever
 
 ## Screenshots
 
-The screenshots below were captured from the current public candidate running as a local self-hosted instance.
+The screenshots below were captured from the current public build running as a local self-hosted instance.
 
 | Control Room | Result Desk | Config Desk |
 | --- | --- | --- |
@@ -154,29 +187,35 @@ For full deployment instructions, see the [Docker self-hosted guide](docs/deploy
 
 The app is configured from the **Config Desk**.
 
-The Config Desk now exposes:
+The Config Desk exposes:
 
 - `Base URL`
 - `API Key`
 - quick provider preset
 - API protocol override
 - global scoring override
-- default task model alias
+- default task model
+- default reasoning effort
 - runtime defaults: `workerConcurrency`, `scoreThreshold`, `maxRounds`
 
 At the job level, the public build also supports:
 
 - task-level scoring override during submission
-- current scoring preview inside the Result Desk
-- editing task-level scoring override from the job detail page
+- choosing model and reasoning effort during submission
+- adjusting task model, reasoning effort, and round cap from the job detail page
+- inspecting the active scoring rubric, next-round steering, and stable rules in job detail
 
-Supported today:
+## Provider And Compatibility Notes
 
-- **OpenAI-compatible**: `GET /models` + `POST /chat/completions`
-- **Anthropic official API**: `GET /v1/models` + `POST /v1/messages`
-- **Gemini official API**: `GET /v1beta/models` + `POST /v1beta/models/{model}:generateContent`
-- **Mistral official API**: `GET /models` + `POST /chat/completions`
-- **Cohere official API**: `GET /v2/models` + `POST /v2/chat`
+The current public build supports:
+
+- **OpenAI-compatible gateways**
+  - model discovery plus capability-aware request routing
+  - routing between `chat/completions` and `responses` when appropriate, with fallback when needed
+- **Anthropic official API**
+- **Gemini official API**
+- **Mistral official API**
+- **Cohere official API**
 
 Common provider presets include:
 
@@ -203,12 +242,12 @@ Official APIs work directly from their provider root. No custom proxy path is re
 
 This repository currently ships the **Self-Hosted / Server Edition**.
 
-- Local `npm` runs store data on the machine running the app.
-- Docker deployments store data in the mounted server-side volume, not in each user's browser.
-- Server-originated requests remain the broadest compatibility path for OpenAI-compatible endpoints.
-- A separate `Web Local Edition` is planned later, but it is not shipped here today.
+- local `npm` runs store data on the machine running the app
+- Docker deployments store data in the mounted server-side volume, not in each user's browser
+- requests are sent from the server, which fits both self-hosted gateways and official APIs
+- a separate `Web Local Edition` may come later, but it is not shipped here today
 
-Default SQLite path:
+Default database path:
 
 ```text
 data/prompt-optimizer.db
@@ -225,17 +264,21 @@ PROMPT_OPTIMIZER_DB_PATH=/your/custom/path.db
 - **Is this a hosted SaaS?**
   - No. This repository currently ships the self-hosted server edition.
 - **What is the main output?**
-  - A copy-ready full prompt produced by an automated multi-round optimization pipeline.
+  - A copy-ready full prompt produced by an automated multi-round optimization flow.
 - **Can I intervene during optimization?**
-  - Yes. You can pause a task, add next-round steering, continue one round, or resume automatic execution.
-- **Which APIs does it support?**
-  - The current public build supports OpenAI-compatible, Anthropic, Gemini, Mistral, and Cohere, with presets and protocol mapping for DeepSeek, Kimi, Qwen, GLM, and OpenRouter.
+  - Yes. You can pause a task, add next-round steering, adjust stable rules, continue one round, or resume automatic execution.
+- **Why is the score shown for this round not the score of the new output?**
+  - Because the current product semantics are "review the current input prompt while generating the next prompt." The new prompt is reviewed in the next round.
 - **Can I customize the scoring rubric?**
   - Yes. The Config Desk supports a global scoring override, and each job can also carry its own task-level scoring override in Markdown.
+- **Can I change reasoning effort?**
+  - Yes. The dashboard submission flow, settings page, and job detail page all expose model and reasoning effort controls.
+- **Which APIs does it support?**
+  - The current public build supports OpenAI-compatible, Anthropic, Gemini, Mistral, and Cohere, with presets and protocol mapping for DeepSeek, Kimi, Qwen, GLM, and OpenRouter.
 - **Can I switch the interface to English?**
   - Yes. The current public build already includes an in-app `中文 / EN` toggle.
 - **Where is data stored?**
-  - In the local SQLite database on the machine or mounted volume running the app.
+  - In the database on the machine or mounted volume running the app.
 - **Why AGPL-3.0?**
   - Because modified hosted versions should remain source-available to the users who depend on them.
 
